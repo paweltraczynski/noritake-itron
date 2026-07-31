@@ -16,7 +16,7 @@ from noritake_cu_gpio import NoritakeGPIO
 from noritake_cu_i2c import NoritakeI2C
 
 # Import Matrix Rain animation demo.
-from matrix_rain import MatrixRain
+from demo.matrix_rain import MatrixRain
 
 # Allow time for the display to become ready for receiving commands.
 time.sleep(1)

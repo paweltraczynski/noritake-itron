@@ -14,7 +14,7 @@ import time
 # Import Noritake GPIO for interacting with Noritake VFD.
 from noritake_cu_gpio import NoritakeGPIO
 # Import Matrix Rain animation demo.
-from matrix_rain import MatrixRain
+from demo/matrix_rain import MatrixRain
 
 # Allow time for the display to become ready for receiving commands.
 time.sleep(1)

@@ -11,11 +11,11 @@ from matrix_rain import MatrixRain
 # Allow time for the display to become ready for receiving commands.
 utime.sleep(1)
 
-# Define the numer of lines and columns in the display.
+# Define the number of lines and columns in the display:
 lines = 2
 cols = 24
 
-# Initialize Noritake VFD.
+# Initialize Noritake VFD:
 vfd = Noritake(
     rs_pin = Pin(0),
     enable_pin = Pin(1),
@@ -74,6 +74,7 @@ class MatrixRain:
         for line in range(self.lines):
             for col in range(self.cols):
                 self.vfd.setCursor(col, line)
+                # TODO: Why using writeData instead of writeText?
                 self.vfd.writeData(self.chars[line][col])
 
     def move_matrix_chars(self):
@@ -108,7 +109,7 @@ class MatrixRain:
                         self.char_count[line] += 1
                         self.space_count[line] = 0
 
-                    # When the script starts randomize what's first.
+                    # When the script starts, randomize what's first.
                     else:
                         if random.randint(0, 1) == 0:
                             new_chars[line][col] = self.get_char()

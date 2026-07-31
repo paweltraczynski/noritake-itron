@@ -1,7 +1,7 @@
 from machine import Pin, I2C
 import utime
 from noritake_cu_i2c import NoritakeI2C
-from matrix_rain import MatrixRain
+from demo.matrix_rain import MatrixRain
 
 # Allow time for the display to become ready for receiving commands.
 utime.sleep(1)

@@ -31,11 +31,14 @@ rain = MatrixRain(vfd, lines, cols)
 rain.animate()
 """
 
+# TODO: Rework and document the whole file.
 import utime
 import random
 
 class MatrixRain:
-    """Implemented Matrix Rain animation."""
+    """
+    Displays a Matrix Rain animation.
+    """
 
     def __init__(self, vfd, lines, cols):
         self.vfd = vfd

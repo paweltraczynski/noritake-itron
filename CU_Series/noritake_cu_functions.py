@@ -10,7 +10,7 @@ class NoritakeFunctions:
 
     def write(self, data):
         """
-        Universal write method for commands, strings, or byte arrays.
+        Universal write method for text strings and commands.
 
         :param data: The data to write - can be text or command bytes.
         """
@@ -22,7 +22,7 @@ class NoritakeFunctions:
                 self.writeCommand(byte)
 
         elif isinstance(data, int):
-            self.writeCommand(data & 0xFF)
+            self.writeCommand(data)
 
         else:
             raise TypeError('Unsupported data type for write().')
@@ -49,7 +49,11 @@ class NoritakeFunctions:
 
         :param data: The data to write.
         """
-        self.hal_write_data(data)
+        if isinstance(data, (list, tuple, bytes, bytearray)):
+            for byte in data:
+                self.hal_write_data(byte)
+        else:
+            self.hal_write_data(data)
 
     def writeCustomChar(self, location, charmap):
         """

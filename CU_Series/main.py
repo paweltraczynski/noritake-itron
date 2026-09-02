@@ -17,6 +17,8 @@ from noritake_cu_i2c import NoritakeI2C
 
 # Import Matrix Rain animation demo.
 from demo.matrix_rain import MatrixRain
+# Import digital clock demo.
+from demo.clock import ClockTemp
 
 # Allow time for the display to become ready for receiving commands.
 time.sleep(1)
@@ -54,5 +56,9 @@ vfd = NoritakeGPIO(
 # )
 
 # Demo: Matrix Rain animation.
-rain = MatrixRain(vfd, lines, cols)
-rain.animate()
+#rain = MatrixRain(vfd, lines, cols)
+#rain.animate()
+
+# Demo: Digital clock.
+clock = ClockTemp(vfd, lines, cols)
+clock.keepRunning()

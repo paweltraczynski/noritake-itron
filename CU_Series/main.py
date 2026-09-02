@@ -1,11 +1,12 @@
 """
-Main script for starting the Noritake CU VFD.
+Main script for driving the Noritake CU VFD.
 
 If you are using MicroPython, for example, on Raspberry Pi Pico,
-this script will run automatically.
+this script will run automatically if you rename it to 'main.py'.
 
 When using regular Raspberry Pi, you need to manually run this script
-and instead of importing micropython 'machine' use 'gpiozero' or 'RPi.GPIO'.
+and instead of importing MicroPython 'machine' use 'gpiozero' or 'RPi.GPIO'
+and import Pin from it.
 """
 
 from machine import Pin, I2C
@@ -55,10 +56,10 @@ vfd = NoritakeGPIO(
 #     num_columns = cols
 # )
 
-# Demo: Matrix Rain animation.
+# Run Matrix Rain animation.
 #rain = MatrixRain(vfd, lines, cols)
 #rain.animate()
 
-# Demo: Digital clock.
+# Run Digital Clock.
 clock = ClockTemp(vfd, lines, cols)
 clock.keepRunning()

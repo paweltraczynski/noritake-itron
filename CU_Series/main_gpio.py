@@ -5,7 +5,8 @@ If you are using MicroPython, for example, on Raspberry Pi Pico,
 this script will run automatically if you rename it to 'main.py'.
 
 When using regular Raspberry Pi, you need to manually run this script
-and instead of importing MicroPython 'machine' use 'gpiozero' or 'RPi.GPIO'.
+and instead of importing MicroPython 'machine' use 'gpiozero' or 'RPi.GPIO'
+and import Pin from it.
 """
 
 from machine import Pin
@@ -36,5 +37,5 @@ vfd = NoritakeGPIO(
 )
 
 # Run Matrix Rain animation.
-rain = MatrixRain(vfd, lines, cols)
-rain.animate()
+# rain = MatrixRain(vfd, lines, cols)
+# rain.animate()

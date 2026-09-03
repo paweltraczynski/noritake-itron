@@ -44,11 +44,13 @@ class NoritakeGPIO(NoritakeFunctions, GpioLcd):
     # |                  GENERAL COMMANDS                   |
     # '-----------------------------------------------------'
 
-    def setBrightness(self, value):
+    def setBrightness(self, brightness):
         """
         Sets brightness level (1-4).
 
         Noritake command: 7.7.2 - Brightness control
+
+        :param brightness: 0 for 100%, 1 for 75%, 2 for 50% and 3 for 25%.
         """
         levels = {
             1: 0x00,
@@ -61,4 +63,4 @@ class NoritakeGPIO(NoritakeFunctions, GpioLcd):
         self.hal_write_8bits(self.LCD_FUNCTION)
 
         self.rs_pin.value(1)
-        self.hal_write_8bits(levels[value])
+        self.hal_write_8bits(levels[brightness])

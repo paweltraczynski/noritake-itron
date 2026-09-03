@@ -5,6 +5,7 @@ import urequests
 from machine import RTC
 
 from .clock_digits import ClockDigits
+from .matrix_rain import MatrixRain
 
 # Import clock_config_local.py if user has created it.
 try:
@@ -15,7 +16,7 @@ except ImportError:
 
 class ClockTemp:
     """
-    Displays a local time clock and a local temperature.
+    Displays a local time clock and a local weather data.
     """
 
     def __init__(self, vfd, lines, cols):
@@ -66,6 +67,13 @@ class ClockTemp:
         self.displayed_time = None
         self.displayed_temperature = None
         self.displayed_humidity = None
+
+        # Current power status (on, dimed, off).
+        self.power_status = 'on'
+
+        # Matrix Rain animation shown at every full hour.
+        self.matrix = MatrixRain(self.vfd, lines, cols)
+        self.matrix_last_hour = None
 
     def connectWifi(self):
         """
@@ -217,6 +225,7 @@ class ClockTemp:
                 'second': '{:0>2}'.format(hardware_time[6]),
                 'timestamp': time.time(),
                 'hour_int': hardware_time[4],
+                'minute_int': hardware_time[5],
             }
         else:
             return {
@@ -228,6 +237,7 @@ class ClockTemp:
                 'second': 0,
                 'timestamp': 0,
                 'hour_int': 0,
+                'minute_int': 0,
             }
 
     def fetchWeather(self):
@@ -362,7 +372,7 @@ class ClockTemp:
 
     def keepRunning(self):
         """
-
+        The main loop that keeps the clock running.
         """
         self.connectWifi()
         self.screenInit()
@@ -442,25 +452,44 @@ class ClockTemp:
                 self.vfd.writeText('--')
 
             # Screen dimming at night (requires parallel connection).
-            try:
-                if date['year'] != 0:
-                    hour = date['hour']
+            if date['year'] != 0:
+                hour = date['hour_int']
 
-                    # TODO: This doesnt work.
-                    # TODO: This should also work at other hours so that it dims when plugged to power at night.
-                    # TODO: Dont send writes if the brightness did not change.
-                    if hour == config.vfd_on_hour:
-                        self.vfd.setBrightness(4)
-                    elif hour == config.vfd_dim_hour:
-                        self.vfd.setBrightness(2)
-                    elif hour == config.vfd_off_hour:
-                        self.vfd.setBrightness(0)
-            except:
-                pass
+                # Don't send commands if the night diming is already turned on.
+                if hour == config.vfd_on_hour and self.power_status != 'on':
+                    self.vfd.displayOnOff(1)
+                    self.vfd.setBrightness(0)
+                    self.power_status = 'on'
+
+                elif hour == config.vfd_dim_hour and self.power_status != 'dim':
+                    self.vfd.displayOnOff(1)
+                    self.vfd.setBrightness(3)
+                    self.power_status = 'dim'
+
+                elif hour == config.vfd_off_hour and self.power_status != 'off':
+                    self.vfd.displayOnOff(0)
+                    self.power_status = 'off'
+
+                self.vfd.setBrightness(3)
+
+            # Show Matrix Rain animation once in an hour, e.g. at 5:00 or 12:00.
+            if date['year'] != 0 and config.matrix_rain_duration != 0:
+                hour = date['hour_int']
+                minute = date['minute_int']
+
+                if self.matrix_last_hour != hour and minute == 52:
+                    self.matrix_last_hour = hour
+
+                    self.matrix.animate(config.matrix_rain_duration)
+                    self.vfd.clearDisplay()
+
+                    # Reset displayed clock data so that it is rewritten.
+                    self.displayed_time = None
+                    self.displayed_temperature = None
+                    self.displayed_humidity = None
 
             # Reconnect Wi-Fi if needed.
             if not self.wlan.isconnected():
                 self.connectWifi()
 
             time.sleep(0.1)
-            # TODO: Show matrix animation once in an hour.

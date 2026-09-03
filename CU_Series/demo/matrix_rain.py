@@ -4,12 +4,12 @@ Custom library for printing Matrix Rain animation on Noritake VFD's.
 Usage:
 
 from machine import Pin
-import utime
+import time
 from noritake_gpio import Noritake
 from matrix_rain import MatrixRain
 
 # Allow time for the display to become ready for receiving commands.
-utime.sleep(1)
+time.sleep(1)
 
 # Define the number of lines and columns in the display:
 lines = 2
@@ -32,7 +32,7 @@ rain.animate()
 """
 
 # TODO: Rework and document the whole file.
-import utime
+import time
 import random
 
 class MatrixRain:
@@ -145,12 +145,18 @@ class MatrixRain:
 
         self.chars = new_chars
 
-    def animate(self):
+    def animate(self, timeout = None):
         """Start the animation."""
-        self.vfd.cursorHome()
+        self.vfd.clearDisplay()
         self.print_matrix_chars()
 
+        start_time = time.ticks_ms()
+
         while True:
+            # Exit after the timeout.
+            if timeout and time.ticks_diff(time.ticks_ms(), start_time) >= (timeout * 1000):
+                break
+
             self.move_matrix_chars()
             self.print_matrix_chars()
-            utime.sleep(0.15)
+            time.sleep(0.15)

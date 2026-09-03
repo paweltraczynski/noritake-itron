@@ -1,4 +1,4 @@
-Noritake Itron VFD driver library
+Noritake Itron CU and GU series VFD driver library
 ===============
 
 A Python library for controlling Noritake Itron displays:
@@ -129,6 +129,10 @@ TODO: Image coming soon
 
 ### Digital Clock demo
 
+Please note: The Digital Clock demo was written for MicroPython. If you want
+to run it under regular Python (e.g. on Raspberry 5 or newer)
+you will need to adjust MicroPython specific parts in the `clock.py` file.
+
 To run the Digital Clock, first you need to do the same changes as explained
 in the Matrix Rain animation demo section, except this time you would have
 to uncomment the code related to the clock functionality:
@@ -151,7 +155,16 @@ edits in the copy:
 - `vfd_on_hour` - at what hour in the morning the VFD should turn on again
 
 When you edit configuration you need to obtain API keys for timeapi.world and
-for OpenWeatherMap. Links are provided in the configuration file.
+for OpenWeatherMap. Links are provided in the configuration file. The API
+keys are needed so that the clock can retrieve proper time and weather from
+the Internet.
+
+Once you configure everything in the config file then you can run the Python
+script the same way as explained in the Matrix Rain demo. If the Wi-Fi and
+APIs access worked then you should see a clock on the left and temperature and
+humidity on the right of the screen as so:
+
+TODO: Image coming soon
 
 ## Noritake Itron GU Series
 

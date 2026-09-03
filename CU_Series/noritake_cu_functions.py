@@ -226,6 +226,18 @@ class NoritakeFunctions:
         else:
             self.display_off()
 
+    def setBrightness(self, brightness):
+        """
+        Sets brightness level (1-4).
+
+        Noritake command: 7.7.2 - Brightness control
+
+        :param brightness: 0 for 100%, 1 for 75%, 2 for 50% and 3 for 25%.
+        """
+        # This function is implemented in 'noritake_cu_gpio.py' file.
+        # For the I2C connection it has no effect.
+        pass
+
     # .-----------------------------------------------------.
     # |                DISPLAY MOVE COMMANDS                |
     # '-----------------------------------------------------'

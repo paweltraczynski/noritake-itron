@@ -20,3 +20,7 @@ weather_unit = 'metric'
 vfd_dim_hour = 20
 vfd_off_hour = 1
 vfd_on_hour = 8
+
+# VFD Matrix Rain animation at every full hour.
+# Set animation duration in seconds or set to 0 to disable it completely.
+matrix_rain_duration = 15

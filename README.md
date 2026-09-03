@@ -153,6 +153,8 @@ edits in the copy:
 - `vfd_dim_hour` - at what hour the VFD should dim because its early night
 - `vfd_off_hour` - at what hour the VFD should turn off because its late night
 - `vfd_on_hour` - at what hour in the morning the VFD should turn on again
+- `matrix_rain_duration` - for how long the Matrix Rain animation should show up
+  at every full hour. Set to 0 to disable it entirely.
 
 When you edit configuration you need to obtain API keys for timeapi.world and
 for OpenWeatherMap. Links are provided in the configuration file. The API

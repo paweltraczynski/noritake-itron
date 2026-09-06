@@ -9,12 +9,12 @@ and instead of importing MicroPython 'machine' use 'gpiozero' or 'RPi.GPIO'
 and import Pin from it.
 """
 
-from machine import Pin, I2C
+from machine import Pin#, I2C
 import time
 
 # Import either Noritake GPIO or Noritake I2C.
-from noritake_cu_gpio import NoritakeGPIO
-from noritake_cu_i2c import NoritakeI2C
+from noritake_cu_gpio import NoritakeCuGPIO
+# from noritake_cu_i2c import NoritakeCuI2C
 
 # Import Matrix Rain animation demo.
 from demo.matrix_rain import MatrixRain
@@ -32,7 +32,7 @@ cols = 16
 # Requires 'from noritake_gpio import Noritake'.
 
 # Initialize Noritake VFD.
-vfd = NoritakeGPIO(
+vfd = NoritakeCuGPIO(
     rs_pin = Pin(0),
     enable_pin = Pin(1),
     d4_pin = Pin(2),
@@ -49,12 +49,11 @@ vfd = NoritakeGPIO(
 # Initialize Noritake VFD.
 # i2c = I2C(0, scl = Pin(1), sda = Pin(0))
 #
-# vfd = NoritakeI2C(
+# vfd = NoritakeCuI2C(
 #     i2c = i2c,
 #     i2c_addr = 0x27,
 #     num_lines = lines,
-#     num_columns = cols
-# )
+#     num_columns = cols)
 
 # Run Matrix Rain animation.
 #rain = MatrixRain(vfd, lines, cols)

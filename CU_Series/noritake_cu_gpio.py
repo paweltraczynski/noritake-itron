@@ -1,9 +1,10 @@
 """
-Custom library for interacting with Noritake Itron CU Series VFD's.
+A Library for interacting with Noritake Itron CU Series VFD's
+over a parallel/GPIO connection.
 
 Use 4 or 8 data wires and 'rw' + 'enable' wires to communicate with the VFD.
 
-Requires https://github.com/dhylands/python_lcd files:
+Requires https://github.com/dhylands/python_lcd files (included in the lib folder):
 - lcd_api.py
 - esp32_gpio_lcd.py
 
@@ -17,18 +18,20 @@ vfd = Noritake(
     d6_pin = Pin(4),
     d7_pin = Pin(5),
     num_lines = 2,
-    num_columns = 16
+    num_columns = 16,
 )
-
 vfd.write('Hello')
 
-See the below functions and lcd_api.py functions.
+See the below functions and NoritakeCuFunctions() functions
+to review what commands are available.
 """
 
-from noritake_cu_functions import NoritakeFunctions
-from esp32_gpio_lcd import GpioLcd
+# Include 'lib.' for IDE to see the file.
+from lib.esp32_gpio_lcd import GpioLcd
 
-class NoritakeGPIO(NoritakeFunctions, GpioLcd):
+from noritake_cu_functions import NoritakeCuFunctions
+
+class NoritakeCuGPIO(GpioLcd, NoritakeCuFunctions):
     """Implements a Noritake Itron VFD connected via GPIO pins."""
 
     def __init__(self, rs_pin, enable_pin, d0_pin=None, d1_pin=None,
@@ -50,7 +53,7 @@ class NoritakeGPIO(NoritakeFunctions, GpioLcd):
 
         Noritake command: 7.7.2 - Brightness control
 
-        :param brightness: 0 for 100%, 1 for 75%, 2 for 50% and 3 for 25%.
+        :param brightness: 0 for 100%, 1 for 75%, 2 for 50%, and 3 for 25%.
         """
         levels = {
             1: 0x00,

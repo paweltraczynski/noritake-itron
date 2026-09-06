@@ -19,24 +19,24 @@ The library also contains:
 - Digital Clock demo with weather indication.
 
 The library was implemented for MicroPython. However, with a bit of work
-it is possible to adjust it for a regular Python.
+it is possible to adapt it for regular Python.
 
 ## Connections
 
-You can connect VFD to your MicroPython board (e.g. Raspberry Pico, ESP32, etc.)
-using either parallel/GPIO connection or I<sup>2</sup>C connection.
+You can connect a VFD to your MicroPython board (e.g. Raspberry Pi Pico, ESP32,
+etc.) using either a parallel/GPIO connection or an I<sup>2</sup>C connection.
 
-When using parallel/GPIO connection, you need to import the
+When using a parallel/GPIO connection, you need to import the
 `noritake_cu_gpio.py` file. An example of the main script when using parallel/GPIO is shown in the
 `main_gpio.py`.
 
-When using I<sup>2</sup>C connection, you need to import the
+When using an I<sup>2</sup>C connection, you need to import the
 `noritake_cu_i2c.py` file. An example of the main script when using I<sup>2</sup>C is shown in the
 `main_i2c.py`.
 
 ## Parallel/GPIO connection
 
-To connect using parallel/GPIO, connect the VFD directly to GPIO port
+To connect using parallel/GPIO, connect the VFD directly to the GPIO port
 using these cables:
 
 - pin 1 - VSS - Ground
@@ -46,7 +46,7 @@ using these cables:
 - pin 5 - R/W (Read/Write) - connect to ground since the library writes only
 - pin 6 - E (Enable) - connect to GPIO
 - pins 7-10 - DB (Data Bus) - lower four bits for 8-bit operation, if you are
-  using 4-bit mode then leave these unconnected
+  using 4-bit mode, then leave these unconnected
 - pins 11-14 - DB (Data Bus) - upper four bits for 4-bit or 8-bit communication,
   connected to GPIO
 
@@ -56,13 +56,13 @@ TODO: Image coming soon
 
 ## I<sup>2</sup>C connection
 
-To connect using I<sup>2</sup>C you need to use a HD44780 compatible
+To connect using I<sup>2</sup>C, you need to use an HD44780 compatible
 I<sup>2</sup>C converter like the one shown here:
 
 <img src="https://cdn3.botland.store/74254-pdt_540/i2c-converter-for-hd44780-lcd-display.jpg" alt="I2C converter for HD44780 compatible displays" width="300" height="300">
 
 The converter gets connected to the VFD using its 14-16 pins header.
-The 4 pins on the side of the converted connect directly to the GPIO port using these cables:
+The 4 pins on the side of the converter connect directly to the GPIO port using these cables:
 
 - pin 1 - GND - Ground
 - pin 2 - VCC - 5V
@@ -79,16 +79,16 @@ There are two demo scripts that you can run and customize to your needs:
 - Matrix Rain animation (`matrix_rain.py`)
 - Digital Clock (`clock.py`, `clock_digits.py` and `clock_config.py`)
 
-To test if everything works you can run the Matrix Rain demo script first
+To test if everything works, you can run the Matrix Rain demo script first
 as it has no configuration and does not rely on the internet connection
 and third party APIs.
 
 ## Matrix Rain animation demo
 
-To run the Matrix Rain animation you need to do changes in the `main_gpio.py` or
+To run the Matrix Rain animation, you need to make changes in the `main_gpio.py` or
 in `main_i2c.py` depending on what connection type you are using.
 
-Adjust the numer of lines and columns that you VFD has:
+Adjust the number of lines and columns that your VFD has:
 ```python
 # Define the number of lines and columns in the display.
 lines = 2
@@ -102,7 +102,7 @@ Uncomment the code:
 ```
 
 Then run the file  
-(in Raspberry Pico you can rename the file to `main.py` so that it runs 
+(on a Raspberry Pi Pico you can rename the file to `main.py` so that it runs 
 automatically).
 
 You can see the result of working Matrix Rain below:
@@ -111,7 +111,7 @@ TODO: Image coming soon
 
 ### Digital Clock demo
 
-To run the Digital Clock, first you need to do the same changes as explained
+To run the Digital Clock, first you need to make the same changes as explained
 in the Matrix Rain animation demo section, except this time you would have
 to uncomment the code related to the clock functionality:
 ```python
@@ -123,25 +123,25 @@ Then you need to copy `clock_config.py` to `clock_config_local.py` and do
 edits in the copy:
 - `wifi_ssid` - provide the name of your Wi-Fi network
 - `wifi_password` - provide the password to your Wi-Fi network
-- `time_api_key` - the system needs to access timeapi.world API to get the timezone dependant time
+- `time_api_key` - the system needs to access the timeapi.world API to get the timezone-dependent time
 - `time_timezone` - provide the timezone for which to get the time
-- `weather_api_key` - the system needs to access OpenWeatherMap API to get the weather data
+- `weather_api_key` - the system needs to access the OpenWeatherMap API to get the weather data
 - `weather_city` - provide the city for which to show the weather
 - `weather_unit` - set either to 'metric' or 'imperial'
-- `vfd_dim_hour` - at what hour the VFD should dim because its early night
-- `vfd_off_hour` - at what hour the VFD should turn off because its late night
+- `vfd_dim_hour` - at what hour the VFD should dim because it is early night
+- `vfd_off_hour` - at what hour the VFD should turn off because it is late night
 - `vfd_on_hour` - at what hour in the morning the VFD should turn on again
 - `matrix_rain_duration` - for how long the Matrix Rain animation should show up
   at every full hour. Set to 0 to disable it entirely.
 
-When you edit configuration you need to obtain API keys for timeapi.world and
+When you edit the configuration, you need to get API keys for timeapi.world and
 for OpenWeatherMap. Links are provided in the configuration file. The API
-keys are needed so that the clock can retrieve proper time and weather from
-the Internet.
+keys are needed so that the clock can retrieve the proper time and weather from
+the internet.
 
-Once you configure everything in the config file then you can run the Python
+Once you configure everything in the config file, then you can run the Python
 script the same way as explained in the Matrix Rain demo. If the Wi-Fi and
-APIs access worked then you should see a clock on the left and temperature and
+APIs access worked, then you should see a clock on the left and temperature and
 humidity on the right of the screen as so:
 
 TODO: Image coming soon

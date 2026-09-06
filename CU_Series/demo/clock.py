@@ -4,6 +4,7 @@ import requests
 import urequests
 from machine import RTC
 
+# Dots on the start are required for RPi Pico/MicroPython boards.
 from .clock_digits import ClockDigits
 from .matrix_rain import MatrixRain
 
@@ -16,7 +17,7 @@ except ImportError:
 
 class ClockTemp:
     """
-    Displays a local time clock and a local weather data.
+    Displays a local time clock and local weather data.
     """
 
     def __init__(self, vfd, lines, cols):
@@ -62,7 +63,7 @@ class ClockTemp:
         self.weather_fetch_interval = 10 * 60 * 1000
 
         # Track last displayed time and weather.
-        # This is used for preventing writes to the VFD when the time
+        # This is used to prevent writing to the VFD when the time
         # or weather did not change.
         self.displayed_time = None
         self.displayed_temperature = None
@@ -230,12 +231,12 @@ class ClockTemp:
         else:
             return {
                 'year': 0,
-                'month': 0,
-                'day': 0,
-                'hour': 0,
-                'minute': 0,
-                'second': 0,
-                'timestamp': 0,
+                'month': '00',
+                'day': '00',
+                'hour': '00',
+                'minute': '00',
+                'second': '00',
+                'timestamp': '00',
                 'hour_int': 0,
                 'minute_int': 0,
             }
@@ -255,70 +256,74 @@ class ClockTemp:
             'units': self.weather_unit,
         }
 
-        weather = self.urlGetJson(weather_url, params)
-
         temperature = 0
         humidity = 0
         conditions = ''
         success = False
 
-        # Weather API deta structure.
-        # timezone => 7200
-        # sys => Dict {
-        #   type => 2
-        #   sunrise => 1787888431
-        #   country => 'PL'
-        #   id => 2032856
-        #   sunset => 1787938467
-        # }
-        # base => 'stations'
-        # main => Dict {
-        #   pressure => 1016
-        #   feels_like => 23.67
-        #   temp_max => 25.86
-        #   temp => 24.18
-        #   temp_min => 23.13
-        #   humidity => 39
-        #   sea_level => 1016
-        #   grnd_level => 1005
-        # }
-        # visibility => 10000
-        # id => 756135
-        # clouds => Dict {
-        #   all => 89
-        # }
-        # coord => Dict {
-        #   lon => 21.0118
-        #   lat => 52.2298
-        # }
-        # name => 'Warsaw'
-        # cod => 200
-        # weather => [
-        #   0 => Dict {
-        #     id => 804
-        #     icon => '04d'
-        #     main => 'Clouds'
-        #     description => 'overcast clouds'
-        #   }
-        # ]
-        # dt => 1787930328
-        # wind => Dict {
-        #   speed => 5.14
-        #   deg => 130
-        # }
+        try:
+            weather = self.urlGetJson(weather_url, params)
 
-        if weather:
-            temperature = round(weather['main']['temp'], 1)
-            humidity = round(weather['main']['humidity'], 0)
-            conditions = weather['weather'][0]['main']
-            success = True
+            # Weather API deta structure.
+            # timezone => 7200
+            # sys => Dict {
+            #   type => 2
+            #   sunrise => 1787888431
+            #   country => 'PL'
+            #   id => 2032856
+            #   sunset => 1787938467
+            # }
+            # base => 'stations'
+            # main => Dict {
+            #   pressure => 1016
+            #   feels_like => 23.67
+            #   temp_max => 25.86
+            #   temp => 24.18
+            #   temp_min => 23.13
+            #   humidity => 39
+            #   sea_level => 1016
+            #   grnd_level => 1005
+            # }
+            # visibility => 10000
+            # id => 756135
+            # clouds => Dict {
+            #   all => 89
+            # }
+            # coord => Dict {
+            #   lon => 21.0118
+            #   lat => 52.2298
+            # }
+            # name => 'Warsaw'
+            # cod => 200
+            # weather => [
+            #   0 => Dict {
+            #     id => 804
+            #     icon => '04d'
+            #     main => 'Clouds'
+            #     description => 'overcast clouds'
+            #   }
+            # ]
+            # dt => 1787930328
+            # wind => Dict {
+            #   speed => 5.14
+            #   deg => 130
+            # }
 
-            # Save the timestamp of the successful synchronization.
-            self.weather_last_fetch = time.ticks_ms()
-            print('Fetched weather data from OpenWeatherMap.')
+            if weather and isinstance(weather, dict):
+                temperature = round(weather['main']['temp'], 1)
+                humidity = round(weather['main']['humidity'], 0)
+                conditions = weather['weather'][0]['main']
+                success = True
 
-        else:
-            print('Failed to fetch weather data from OpenWeatherMap.')
+                # Save the timestamp of the successful synchronization.
+                self.weather_last_fetch = time.ticks_ms()
+                print('Fetched weather data from OpenWeatherMap.')
+
+            else:
+                print('Failed to fetch weather data from OpenWeatherMap.')
+
+        except Exception as e:
+            print('Weather synchronization error:', e)
 
         self.weather = {
             'temperature': temperature,
@@ -346,7 +351,7 @@ class ClockTemp:
 
     def screenInit(self):
         """
-        Initializes VFD large digits and prints message and then placeholders.
+        Initializes VFD large digits and prints a message and then placeholders.
         """
         self.digits.largeDigitsInit()
 
@@ -387,10 +392,13 @@ class ClockTemp:
 
                 # Do so only if it has changed since the last print.
                 if self.displayed_time != time_formatted:
-                    self.digits.largeDigit(date['hour'][0], 0)
-                    self.digits.largeDigit(date['hour'][1], 3)
-                    self.digits.largeDigit(date['minute'][0], 7)
-                    self.digits.largeDigit(date['minute'][1], 10)
+                    hour = str(date['hour'])
+                    minute = str(date['minute'])
+
+                    self.digits.largeDigit(hour[0], 0)
+                    self.digits.largeDigit(hour[1], 3)
+                    self.digits.largeDigit(minute[0], 7)
+                    self.digits.largeDigit(minute[1], 10)
                     self.displayed_time = time_formatted
 
                 # Blinking colon between hours and minutes.
@@ -418,7 +426,7 @@ class ClockTemp:
                 humidity = weather['humidity']
 
                 # Temperature should be rounded and always occupying 3
-                # characters because it can for example be 5 or -12.
+                # characters because it can, for example, be 5 or -12.
                 temperature = '{:>3.0f}'.format(temperature)
 
                 # Humidity should be rounded and always in range of 0-99,
@@ -455,7 +463,7 @@ class ClockTemp:
             if date['year'] != 0:
                 hour = date['hour_int']
 
-                # Don't send commands if the night diming is already turned on.
+                # Don't send commands if the night dimming is already turned on.
                 if hour == config.vfd_on_hour and self.power_status != 'on':
                     self.vfd.displayOnOff(1)
                     self.vfd.setBrightness(0)
@@ -470,9 +478,7 @@ class ClockTemp:
                     self.vfd.displayOnOff(0)
                     self.power_status = 'off'
 
-                self.vfd.setBrightness(3)
-
-            # Show Matrix Rain animation once in an hour, e.g. at 5:00 or 12:00.
+            # Show Matrix Rain animation once in an hour, e.g., at 5:00 or 12:00.
             if date['year'] != 0 and config.matrix_rain_duration != 0:
                 hour = date['hour_int']
                 minute = date['minute_int']

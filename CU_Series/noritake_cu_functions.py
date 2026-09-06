@@ -1,8 +1,13 @@
 """
-
+Noritake Itron CU Series VFD's - API functions.
 """
 
-class NoritakeFunctions:
+from lib.lcd_api import LcdApi
+
+class NoritakeCuFunctions(LcdApi):
+    """
+    Noritake CU functions for the CU Series displays.
+    """
 
     # .-----------------------------------------------------.
     # |                  WRITING COMMANDS                   |
@@ -232,9 +237,9 @@ class NoritakeFunctions:
 
         Noritake command: 7.7.2 - Brightness control
 
-        :param brightness: 0 for 100%, 1 for 75%, 2 for 50% and 3 for 25%.
+        :param brightness: 0 for 100%, 1 for 75%, 2 for 50%, and 3 for 25%.
         """
-        # This function is implemented in 'noritake_cu_gpio.py' file.
+        # This function is implemented in the 'noritake_cu_gpio.py' file.
         # For the I2C connection it has no effect.
         pass
 

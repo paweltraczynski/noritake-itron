@@ -11,7 +11,7 @@ The CU series module also contains:
 - Digital Clock demo with weather indication.
 
 The library was implemented for MicroPython, however, with a bit of work
-it is possible to adjust it for a regular Python.
+it is possible to adapt it for regular Python.
 
 ## Some background
 
@@ -32,6 +32,26 @@ network players I have used GU series 256x64 display.
 A MicroPython library module for controlling Noritake Itron CU series VFDs,
 which are character-based displays.
 
+This library module supports the core command sets of Noritake Itron CU series
+VFDs and supports the following models:
+
+- 16x2 Characters – CU16024, CU16025, CU16029
+- 20x2 Characters – CU20024, CU20025, CU20027, CU20029
+- 20x4 Characters – CU20045, CU20049
+- 24x2 Characters – CU24025
+- 40x2 Characters – CU40025, CU40026
+- 40x4 Characters – CU40045
+- 40x6 Characters – CU40066
+
+For more information about the library module, its connections and demos,
+see the [CU_Series documentation](./CU_Series/README.md).
+
 ## Noritake Itron GU Series
 
-The GU series part of the library is currently being in development.
+A MicroPython library module for controlling Noritake Itron GU series VFDs,
+which are graphical displays.
+
+The GU series part of the library is currently under development.
+
+You can check the current progress in the
+[GU_Series documentation](./GU_Series/README.md).

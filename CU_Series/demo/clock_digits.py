@@ -3,7 +3,9 @@ class ClockDigits:
     A class containing VFD clock characters:
     - large digits (0-9)
     - a large colon displayed between hours and minutes
-    - a large dash displayed when the time is not set.
+    - a large dash displayed when the time is not set
+    - a removal of a large digit or dash
+    - a removal of a colon.
     """
     def __init__(self, vfd):
         self.vfd = vfd
@@ -106,7 +108,7 @@ class ClockDigits:
             vfd.setCursor(column, row + 1)
             vfd.writeData([254, 254, 254])
 
-        # Erases digit at a given position.
+        # Erases digit/dash at a given position.
         elif digit == 'erase':
             vfd.write('   ')
             vfd.setCursor(column, row + 1)

@@ -12,10 +12,13 @@ and import Pin from it.
 from machine import Pin
 import time
 
-# Import Noritake GPIO for interacting with Noritake VFD.
-from noritake_cu_gpio import NoritakeGPIO
+# Import Noritake Cu GPIO for interacting with Noritake VFD.
+from noritake_cu_gpio import NoritakeCuGPIO
+
 # Import Matrix Rain animation demo.
-from demo/matrix_rain import MatrixRain
+# from demo.matrix_rain import MatrixRain
+# Import digital clock demo.
+# from demo.clock import ClockTemp
 
 # Allow time for the display to become ready for receiving commands.
 time.sleep(1)
@@ -25,7 +28,7 @@ lines = 2
 cols = 16
 
 # Initialize Noritake VFD.
-vfd = NoritakeGPIO(
+vfd = NoritakeCuGPIO(
     rs_pin = Pin(0),
     enable_pin = Pin(1),
     d4_pin = Pin(2),
@@ -39,3 +42,7 @@ vfd = NoritakeGPIO(
 # Run Matrix Rain animation.
 # rain = MatrixRain(vfd, lines, cols)
 # rain.animate()
+
+# Run Digital Clock.
+# clock = ClockTemp(vfd, lines, cols)
+# clock.keepRunning()

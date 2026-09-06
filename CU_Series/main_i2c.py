@@ -12,10 +12,13 @@ and import Pin from it.
 from machine import Pin, I2C
 import time
 
-# Import Noritake I2C for interacting with Noritake VFD.
-from noritake_cu_i2c import NoritakeI2C
+# Import Noritake Cu I2C for interacting with Noritake VFD.
+from noritake_cu_i2c import NoritakeCuI2C
+
 # Import Matrix Rain animation demo.
-from demo.matrix_rain import MatrixRain
+# from demo.matrix_rain import MatrixRain
+# Import digital clock demo.
+# from demo.clock import ClockTemp
 
 # Allow time for the display to become ready for receiving commands.
 time.sleep(1)
@@ -27,7 +30,7 @@ cols = 16
 # Initialize Noritake VFD.
 i2c = I2C(0, scl = Pin(1), sda = Pin(0))
 
-vfd = NoritakeI2C(
+vfd = NoritakeCuI2C(
     i2c = i2c,
     i2c_addr = 0x27,
     num_lines = lines,
@@ -37,3 +40,7 @@ vfd = NoritakeI2C(
 # Run Matrix Rain animation.
 # rain = MatrixRain(vfd = vfd, lines = lines, cols = cols)
 # rain.animate()
+
+# Run Digital Clock.
+# clock = ClockTemp(vfd, lines, cols)
+# clock.keepRunning()

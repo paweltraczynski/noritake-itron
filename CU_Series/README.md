@@ -14,6 +14,11 @@ VFDs and supports the following models:
 - 40x4 Characters – CU40045
 - 40x6 Characters – CU40066
 
+Note: Models usually include factory suffixes (e.g., -UW1J, -UX3J, or -TW200A)
+indicating interface or revision details. All variations of the base models
+listed above are fully supported (for example, CU20025-UW1J, CU16024-UX3J,
+or CU20029-TW200A).
+
 The library also contains:
 - Matrix Rain animation demo
 - Digital Clock demo with weather indication.

@@ -56,9 +56,9 @@ class ClockDigits:
             vfd.setCursor(column, row + 1)
             vfd.writeData([7, 2, 4])
             # Replace it with this for a straight line '1'.
-            # vfd.writeData([256, 2, 254])
+            # vfd.writeData([254, 2, 254])
             # vfd.setCursor(column, row + 1)
-            # vfd.writeData([256, 2, 256])
+            # vfd.writeData([254, 2, 254])
 
         elif digit == 2 or digit == '2':
             vfd.writeData([3, 6, 2])

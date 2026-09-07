@@ -19,6 +19,10 @@ indicating interface or revision details. All variations of the base models
 listed above are fully supported (for example, CU20025-UW1J, CU16024-UX3J,
 or CU20029-TW200A).
 
+Here are some examples of supported displays (CU16025 and CU20025):
+
+<img src="images/example_supported_displays.jpg" alt="Example supported displays" width="500">
+
 The library also contains:
 - Matrix Rain animation demo
 - Digital Clock demo with weather indication.
@@ -55,16 +59,27 @@ using these cables:
 - pins 11-14 - DB (Data Bus) - upper four bits for 4-bit or 8-bit communication,
   connected to GPIO
 
-The following picture shows this kind of connection:
+The following picture shows this kind of connection. I have used a Raspberry
+Pi Pico 2 W as my board, and I have soldered the VFD directly to the GPIO
+pins 0–5. The additional USB-C port is for powering the board so that the 
+plug faces out to the back instead of to the left side.
 
-TODO: Image coming soon
+<img src="images/connection_gpio_1.jpg" alt="Parallel GPIO Connection Overall" width="500">
+
+Here is a closer look at the Raspberry Pi Pico 2 W:
+
+<img src="images/connection_gpio_2.jpg" alt="Parallel GPIO Connection Noritake" width="500">
+
+And here is the VFD itself:
+
+<img src="images/connection_gpio_3.jpg" alt="Parallel GPIO Connection Raspberry Pi Pico" width="500">
 
 ## I<sup>2</sup>C connection
 
 To connect using I<sup>2</sup>C, you need to use an HD44780 compatible
 I<sup>2</sup>C converter like the one shown here:
 
-<img src="https://cdn3.botland.store/74254-pdt_540/i2c-converter-for-hd44780-lcd-display.jpg" alt="I2C converter for HD44780 compatible displays" width="300" height="300">
+<img src="images/i2c_hd44780_converter.jpg" alt="I2C converter for HD44780 compatible displays" width="500">
 
 The converter gets connected to the VFD using its 14-16 pins header.
 The 4 pins on the side of the converter connect directly to the GPIO port using these cables:
@@ -73,10 +88,6 @@ The 4 pins on the side of the converter connect directly to the GPIO port using 
 - pin 2 - VCC - 5V
 - pin 3 - SDA - I<sup>2</sup>C data line on your Python board
 - pin 4 - SCL - I<sup>2</sup>C clock line on your Python board
-
-The following picture shows this kind of connection:
-
-TODO: Image coming soon
 
 ## Demo scripts
 
@@ -110,9 +121,10 @@ Then run the file
 (on a Raspberry Pi Pico you can rename the file to `main.py` so that it runs 
 automatically).
 
-You can see the result of working Matrix Rain below:
+You can see the result of working Matrix Rain below  
+(actual animation is very smooth, here because of the GIF quality it is not):
 
-TODO: Image coming soon
+<img src="images/demo_matrix.gif" alt="Matrix Rain demo in action" width="500">
 
 ### Digital Clock demo
 
@@ -147,6 +159,8 @@ the internet.
 Once you configure everything in the config file, then you can run the Python
 script the same way as explained in the Matrix Rain demo. If the Wi-Fi and
 APIs access worked, then you should see a clock on the left and temperature and
-humidity on the right of the screen as so:
+humidity on the right of the screen.
 
-TODO: Image coming soon
+The following picture shows the Digital Clock demo in action:
+
+<img src="images/demo_clock.gif" alt="Digital Clock demo in action" width="500">

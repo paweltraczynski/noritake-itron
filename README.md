@@ -55,3 +55,8 @@ The GU series part of the library is currently under development.
 
 You can check the current progress in the
 [GU_Series documentation](./GU_Series/README.md).
+
+## Noritake Datasheets
+
+You can find the Noritake Datasheets for the VFDs here:
+- [https://www.noritake-itron.jp/eng/cs/dl_spec/](https://www.noritake-itron.jp/eng/cs/dl_spec/)

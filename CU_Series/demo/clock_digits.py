@@ -52,9 +52,9 @@ class ClockDigits:
             vfd.writeData([0, 4, 2])
 
         elif digit == 1 or digit == '1':
-            vfd.writeData([1, 2, 254])
+            vfd.writeData([254, 2, 254])
             vfd.setCursor(column, row + 1)
-            vfd.writeData([7, 2, 4])
+            vfd.writeData([254, 2, 256])
 
         elif digit == 2 or digit == '2':
             vfd.writeData([3, 6, 2])

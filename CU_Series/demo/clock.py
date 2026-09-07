@@ -456,8 +456,8 @@ class ClockTemp:
                     self.vfd.writeText(' --')
                     self.displayed_temperature = '--'
 
-                self.vfd.setCursor(14, 1)
-                self.vfd.writeText('--')
+                    self.vfd.setCursor(14, 1)
+                    self.vfd.writeText('--')
 
             # Screen dimming at night (requires parallel connection).
             if date['year'] != 0:

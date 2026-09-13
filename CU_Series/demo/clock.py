@@ -47,6 +47,7 @@ class ClockTemp:
         self.rtc = RTC()
         # Stores the last date synchronization time in ms.
         self.date_last_fetch =  None
+        self.date_last_attempt = None
         # 6-hour interval converted to milliseconds.
         self.date_fetch_interval = 6 * 60 * 60 * 1000
 
@@ -59,8 +60,13 @@ class ClockTemp:
         }
         # Stores the last weather synchronization time in ms.
         self.weather_last_fetch =  None
+        self.weather_last_attempt = None
         # 10-minutes interval converted to milliseconds.
         self.weather_fetch_interval = 10 * 60 * 1000
+
+        # Failed API requests are retried after one minute.
+        self.api_retry_interval = 60 * 1000
+        self.api_timeout = 10
 
         # Track last displayed time and weather.
         # This is used to prevent writing to the VFD when the time
@@ -141,15 +147,15 @@ class ClockTemp:
        return encoded_string
 
     def urlGetJson(self, url, params = None):
-       """
-       Gets JSON from a URL.
+        """
+        Gets JSON from a URL.
 
-       :param url: The URL to get JSON from.
-       :param params: The parameters to include in the URL.
+        :param url: The URL to get JSON from.
+        :param params: The parameters to include in the URL.
 
-       :return: The JSON data or False if the request failed.
-       """
-       if params:
+        :return: The JSON data or False if the request failed.
+        """
+        if params:
            url = url.rstrip('?') + '?'
 
            for key, value in params.items():
@@ -157,12 +163,19 @@ class ClockTemp:
 
            url = url.rstrip('&')
 
-       response = urequests.get(url)
+        response = None
+        try:
+            response = requests.get(url, timeout = self.api_timeout)
 
-       if response.status_code == 200:
-           return response.json()
-       else:
-           return False
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return False
+        finally:
+            if response is not None:
+                response.close()
+
+        return False
 
     def fetchDateTime(self):
         """
@@ -179,9 +192,11 @@ class ClockTemp:
             'Content-Type': 'application/json'
         }
 
+        self.date_last_attempt = time.ticks_ms()
+
         try:
             # Send the GET request with the required headers.
-            response = requests.get(url, headers = headers)
+            response = requests.get(url, headers = headers, timeout = self.api_timeout)
 
             if response.status_code == 200:
                 data = response.json()
@@ -228,9 +243,14 @@ class ClockTemp:
 
         # Fetch date and time from the internet if they weren't fetched yet,
         # or if they were fetched more than 6 hours ago.
-        if (self.date_last_fetch is None) or (
-            time.ticks_diff(current_ticks, self.date_last_fetch)
-            >= self.date_fetch_interval
+        if (
+            (self.date_last_fetch is None) or
+            (time.ticks_diff(current_ticks, self.date_last_fetch)
+             >= self.date_fetch_interval)
+        ) and (
+            (self.date_last_attempt is None) or
+            (time.ticks_diff(current_ticks, self.date_last_attempt)
+             >= self.api_retry_interval)
         ):
             self.fetchDateTime()
 
@@ -283,6 +303,8 @@ class ClockTemp:
         humidity = 0
         conditions = ''
         success = False
+
+        self.weather_last_attempt = time.ticks_ms()
 
         try:
             weather = self.urlGetJson(weather_url, params)
@@ -363,9 +385,14 @@ class ClockTemp:
 
         # Fetch weather from the internet if it wasn't fetched yet,
         # or if it was fetched more than 10 minutes ago.
-        if (self.weather_last_fetch is None) or (
-            time.ticks_diff(current_ticks, self.weather_last_fetch)
-            >= self.weather_fetch_interval
+        if (
+            (self.weather_last_fetch is None) or
+            (time.ticks_diff(current_ticks, self.weather_last_fetch)
+             >= self.weather_fetch_interval)
+        ) and (
+            (self.weather_last_attempt is None) or
+            (time.ticks_diff(current_ticks, self.weather_last_attempt)
+             >= self.api_retry_interval)
         ):
             self.fetchWeather()
 
@@ -506,7 +533,7 @@ class ClockTemp:
                 hour = date['hour_int']
                 minute = date['minute_int']
 
-                if self.matrix_last_hour != hour and minute == 52:
+                if self.matrix_last_hour != hour and minute == 0:
                     self.matrix_last_hour = hour
 
                     self.matrix.animate(config.matrix_rain_duration)

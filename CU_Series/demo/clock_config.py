@@ -25,4 +25,4 @@ vfd_on_hour = 8
 
 # VFD Matrix Rain animation at every full hour.
 # Set the animation duration in seconds or set to 0 to disable it completely.
-matrix_rain_duration = 15
+matrix_rain_duration = 30

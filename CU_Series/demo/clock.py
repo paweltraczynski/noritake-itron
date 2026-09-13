@@ -78,10 +78,9 @@ class ClockTemp:
 
     def connectWifi(self):
         """
-        Connects to the Wi-Fi network.
+        Connects to the Wi-Fi network, retries if the SSID is unavailable.
         """
         self.wlan.active(True)
-        self.wlan.connect(self.ssid, self.password)
 
         # Indicate that connection is in progress.
         self.vfd.clearDisplay()
@@ -90,14 +89,38 @@ class ClockTemp:
         print('Trying to connect to Wi-Fi...')
 
         while not self.wlan.isconnected():
-            time.sleep(1)
+            # Initiate a Wi-Fi connection.
+            try:
+                self.wlan.connect(self.ssid, self.password)
+            except OSError:
+                pass
 
-        # Indicate successful connection.
+            # Give this attempt up to 10 seconds.
+            for _ in range(10):
+                if self.wlan.isconnected():
+                    break
+                time.sleep(1)
+
+            # If the connection failed, then try to disconnect before retrying.
+            if not self.wlan.isconnected():
+                try:
+                    self.wlan.disconnect()
+                except OSError:
+                    pass
+
+                print('Wi-Fi unavailable; retrying...')
+
+        # At this point, the connection has been established.
         self.vfd.clearDisplay()
         self.vfd.setCursor(0, 0)
         self.vfd.write('Wi-Fi connected')
         print('Established Wi-Fi connection.')
         time.sleep(1.5)
+
+        # Force the cleared clock and weather values to redraw.
+        self.displayed_time = None
+        self.displayed_temperature = None
+        self.displayed_humidity = None
 
     def urlEncode(self, string):
        """
@@ -466,12 +489,12 @@ class ClockTemp:
                 # Don't send commands if the night dimming is already turned on.
                 if hour == config.vfd_on_hour and self.power_status != 'on':
                     self.vfd.displayOnOff(1)
-                    self.vfd.setBrightness(0)
+                    self.vfd.setBrightness(4)
                     self.power_status = 'on'
 
                 elif hour == config.vfd_dim_hour and self.power_status != 'dim':
                     self.vfd.displayOnOff(1)
-                    self.vfd.setBrightness(3)
+                    self.vfd.setBrightness(1)
                     self.power_status = 'dim'
 
                 elif hour == config.vfd_off_hour and self.power_status != 'off':

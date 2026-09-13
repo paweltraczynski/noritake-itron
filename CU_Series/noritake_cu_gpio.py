@@ -53,13 +53,13 @@ class NoritakeCuGPIO(GpioLcd, NoritakeCuFunctions):
 
         Noritake command: 7.7.2 - Brightness control
 
-        :param brightness: 0 for 100%, 1 for 75%, 2 for 50%, and 3 for 25%.
+        :param brightness: 4 for 100%, 3 for 75%, 2 for 50%, and 1 for 25%.
         """
         levels = {
-            1: 0x00,
-            2: 0x01,
-            3: 0x02,
-            4: 0x03
+            1: 0x03,
+            2: 0x02,
+            3: 0x01,
+            4: 0x00
         }
 
         self.rs_pin.value(0)

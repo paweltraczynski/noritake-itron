@@ -44,7 +44,7 @@ class NoritakeCuI2C(I2cLcd, NoritakeCuFunctions):
 
         Noritake command: 7.7.2 - Brightness control
 
-        :param brightness: 0 for 100%, 1 for 75%, 2 for 50%, and 3 for 25%.
+        :param brightness: 4 for 100%, 3 for 75%, 2 for 50%, and 1 for 25%.
         """
         # It's not possible to set VFD brightness using I2C.
         pass

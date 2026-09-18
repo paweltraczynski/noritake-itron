@@ -1,10 +1,13 @@
 """
 A Noritake GU series VFD parallel connection class.
 
+Platform: MicroPython with machine.Pin.
+
 This class allows communicating with the Noritake GU series VFDs over
 a parallel bus.
 """
 
+import time
 from machine import Pin
 
 class NoritakeGuParallel:
@@ -34,7 +37,7 @@ class NoritakeGuParallel:
         """
         # Wait until the display is ready (RDY = 1)
         while not self.rdy_pin.value():
-            pass
+            time.sleep(0.001)
 
         # Apply byte to data pins.
         for bit in range(8):

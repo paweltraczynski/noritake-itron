@@ -67,7 +67,22 @@ MicroPython are supported.
 
 ## Voltage level shifter
 
+The VFD communicates using 5V signals while the Raspberry Pi Pico, which I
+have used for testing, and later the Raspberry Pi 5, which I have used in the
+actual project,  both use 3.3 voltage level in their GPIOs.
 
+For this reason I have used a custom-made voltage level shifter board, so
+that 5V from the VFD do not break the Raspberry. The 5V to 3.3V level shifting
+board looked as follows:
+
+<img src="images/level-shifter.jpg" alt="Voltage level shifter" width="500">
+
+On one end there is a 16-pin ribbon cable socket which connects to the VFD at 5V
+level. On the other side there are pins which I connect to the GPIO at 3.3V.
+
+Remember to never connect 5V signals to 3.3V GPIO unless you are very sure
+that your Raspberry is only sending signals, while the 5V device never sends
+any.
 
 ## Serial connection
 

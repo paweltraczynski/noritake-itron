@@ -19,20 +19,25 @@ indicating interface or revision details. All variations of the base models
 listed above are fully supported (for example, CU20025-UW1J, CU16024-UX3J,
 or CU20029-TW200A).
 
+The CU series module was implemented for MicroPython. However, with a bit of work
+it is possible to adapt it for regular Python.
+
 Here are some examples of supported displays (CU16025 and CU20025):
 
 <img src="images/example_supported_displays.jpg" alt="Example supported displays" width="500">
 
-The library also contains:
-- Matrix Rain animation demo
-- Digital Clock demo with weather indication.
+The CU series module contains:
+- An API to interact with the VFD
+- A Matrix Rain animation demo
+- A Digital Clock demo with weather indication
+- Readme file with detailed information.
 
-The library was implemented for MicroPython. However, with a bit of work
+The library module was implemented for MicroPython. However, with a bit of work
 it is possible to adapt it for regular Python.
 
 ## Connections
 
-You can connect a VFD to your MicroPython board (e.g. Raspberry Pi Pico, ESP32,
+You can connect a VFD to your MicroPython board (e.g., Raspberry Pi Pico, ESP32,
 etc.) using either a parallel/GPIO connection or an I<sup>2</sup>C connection.
 
 When using a parallel/GPIO connection, you need to import the

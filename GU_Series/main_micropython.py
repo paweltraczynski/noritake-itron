@@ -41,14 +41,18 @@ try:
     disp.printTrack(12, 17)
     disp.printTime(115, 242)
     disp.printVolume(37)
-    disp.printTitle('Shadow (Album Version with OkinXWX, Lowx, Spacyboi and Tokyo Tears')
+    disp.printTitle('Shadow (Album Version with Lowx, Spacyboi and Tokyo Tears')
     disp.printArtist('Sidewalks And Skeletons')
     
     time.sleep(5)
+
+    disp.printTrack(9, 12)
+    disp.printTime(175, 312)
+    disp.printVolume(63)
+    disp.printTitle('Another Track')
+    disp.printArtist('Tokyo Tears')
     
-    disp.printTitle('Shadow (Album Version)')
-    
-    time.sleep(2)
+    time.sleep(3)
 
     disp.showMessage('volume', 67)
     time.sleep(0.2)
@@ -65,7 +69,8 @@ try:
     disp.showMessage('volume', 88)
     time.sleep(0.2)
     disp.showMessage('volume', 91)
-    
+
+    disp.printVolume(91)
     time.sleep(6)
     
     disp.showMessage('text', 'Power Off')

@@ -72,7 +72,7 @@ For more information about the CU Series module, its connections, and demos see 
 A CPython / MicroPython library module for controlling Noritake Itron GU series
  VFDs, which are graphical displays.
 
-<img src="GU_Series/images/example_supported_displays.jpg" alt="Example supported display" width="500">
+<img src="GU_Series/images/example_supported_display.jpg" alt="Example supported display" width="500">
 
 This library module supports many of the core commands of the Noritake Itron
 CU series VFDs and supports the following models:
@@ -80,13 +80,16 @@ CU series VFDs and supports the following models:
 - 112x16 Pixels – GU112X16G
 - 128x32 Pixels – GU128X32D
 - 128x64 Pixels – GU128X64, GU128X64D, GU128X64F
+- 128x128 Pixels - GU128X128D
+- 256x32 Pixels - GU256X32D
 - 256x64 Pixels – GU256X64C, GU256X64D, GU256X64E, GU256X64F
 - 256x128 Pixels – GU256X128C, GU256X128D, GU256X128E
 - 384x32 Pixels – GU384X32L
+- 512x32 Pixels - GU512X32H
 
-Note: Models usually include factory suffixes (e.g., 3900B)
+Note: Models usually include factory suffixes (e.g., '-3900B')
 indicating interface or revision details. All variations of the base models
-listed above are fully supported (for example, GU256X64D 3900B).
+listed above are fully supported (for example, GU256X64D-3900B).
 
 For more information about the GU Series module, its connections, and demos see the:  
 [GU_Series documentation](./GU_Series/README.md).

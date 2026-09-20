@@ -1812,6 +1812,7 @@ class NoritakeGu:
         Converts polish characters to ASCII equivalents.
 
         :param text: The text to transliterate.
+
         :return: The transliterated text.
         """
         letters = {

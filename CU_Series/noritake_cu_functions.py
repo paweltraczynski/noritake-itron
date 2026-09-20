@@ -62,12 +62,24 @@ class NoritakeCuFunctions(LcdApi):
 
     def writeCustomChar(self, location, charmap):
         """
-        "Write a custom character to one of the 8 CGRAM locations.
+        "Writes a custom character to one of the 8 CGRAM locations.
 
         :param location: The location to write the character to (0-7)
         :param charmap: The character map to write to the location.
         """
         self.custom_char(location, charmap)
+
+    def writeNamedChar(self, name):
+        """
+        Writes a named character on the display at the cursor position.
+
+        This allows writing special characters that can be used as
+        built-in icons (e.g. arrows, circles, etc.)
+
+        :param name: The character name. Please refer to getNamedCharacter()
+        to see what is available.
+        """
+        self.writeData(self.getNamedCharacter(name))
 
     # .-----------------------------------------------------.
     # |                 NAVIGATION COMMANDS                 |
@@ -292,3 +304,98 @@ class NoritakeCuFunctions(LcdApi):
         """
         for _ in range(amount):
             self.writeCommand(self.LCD_MOVE | self.LCD_MOVE_DISP | self.LCD_MOVE_RIGHT)
+
+    # .-----------------------------------------------------.
+    # |                  HELPER FUNCTIONS                   |
+    # '-----------------------------------------------------'
+
+    def getNamedCharacter(self, name):
+        """
+        Returns a hex code of the named character.
+
+        Named characters are special ones that can be used to display
+        arrows, circles, icons-looking characters, etc.
+
+        :param name: The name of the character.
+
+        :return: A hex code of the named character if found, otherwise 0x3f (?).
+        """
+        characters = {
+            # 00-0f - Custom characters.
+            # 10-1f - Blocks, signs and triangles.
+            'block_left_1': 0x10,
+            'block_left_2': 0x11,
+            'block_left_3': 0x12,
+            'block_left_4': 0x13,
+            'block_full': 0x14,
+            'block_right_4': 0x15,
+            'block_right_3': 0x16,
+            'block_right_2': 0x17,
+            'block_right_1': 0x18,
+            'note': 0x19,
+            'deg_c': 0x1a,
+            'deg_f': 0x1b,
+            'triangle_down': 0x1c,
+            'triangle_right': 0x1d,
+            'triangle_left': 0x1e,
+            'triangle_up': 0x1f,
+            # 20-2f - Standard special characters.
+            # 30-3f - Digits and standard special characters.
+            # 40-4f - @ and uppercase letters.
+            # 50-5f - Uppercase letters and standard special characters.
+            # 60-6f - Angled apostrophe-like character and lowercase letters.
+            # 70-7f - Lowercase letters, standard special characters and arrows.
+            'arrow_right': 0x7e,
+            'arrow_left': 0x7f,
+            # 80-8f - Accented letters and 4 characters (2 present on keyboard).
+            'not_equal': 0x8d,
+            'paragraph': 0x8f,
+            # 90-9f.
+            'circle_fill': 0x94,
+            'circle_stroke': 0x95,
+            'square_fill': 0x96,
+            'square_stroke': 0x97,
+            'broken_pipe': 0x98,
+            'graph': 0x9a,
+            'less_equal': 0x9b,
+            'more_equal': 0x9c,
+            'return': 0x9d,
+            'arrow_up': 0x9e,
+            'arrow_down': 0x9f,
+            # a0-af.
+            'square_bottom': 0xa1,
+            'corner_top': 0xa2,
+            'corner_bottom': 0xa3,
+            'dot': 0xa5,
+            'low_i': 0xaa,
+            'hook': 0xad,
+            'inverted_e': 0xae,
+            'fork': 0xaf,
+            # b0-bf.
+            'high_i': 0xb4,
+            'box_open': 0xba,
+            # c0-cf.
+            # d0-df.
+            'triple_line': 0xd0,
+            'box_closed': 0xdb,
+            'box_open2': 0xdc,
+            'slide': 0xdd,
+            'shine': 0xde,
+            'square_top': 0xdf,
+            # e0-ef.
+            'square_root': 0xe8,
+            'hammer': 0xe9,
+            'star': 0xeb,
+            'cent': 0xec,
+            'branch': 0xed,
+            # f0-ff.
+            'dash_x': 0xf8,
+            'storage': 0xfc,
+            'division': 0xfd,
+        }
+
+        if name in characters:
+            return characters[name]
+        else:
+            # If no character then return '?'
+            return 0x3f

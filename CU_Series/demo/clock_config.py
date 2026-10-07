@@ -18,10 +18,11 @@ weather_api_key = 'your_api_key'
 weather_city = 'Warsaw'
 weather_unit = 'metric'
 
-# VFD clock night hours diming.
-vfd_dim_hour = 20
-vfd_off_hour = 0
-vfd_on_hour = 8
+# Display night hours diming.
+display_dim_start_hour = 20
+display_dim_end_hour = 0
+display_off_start_hour = 0
+display_off_end_hour = 8
 
 # VFD Matrix Rain animation at every full hour.
 # Set the animation duration in seconds or set to 0 to disable it completely.

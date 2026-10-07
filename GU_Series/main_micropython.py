@@ -14,7 +14,7 @@ no = None
 try:
     # Serial or Parallel - bus.write() method must exist.
     # Serial.
-    serial_bus = UART(0, baudrate = 38400, bits = 8, parity = None, stop = 1, tx = Pin(0), rx = Pin(1))
+    # serial_bus = UART(0, baudrate = 38400, bits = 8, parity = None, stop = 1, tx = Pin(0), rx = Pin(1))
 
     # Parallel.
     parallel_bus = NoritakeGuParallel(

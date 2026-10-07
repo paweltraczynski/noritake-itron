@@ -35,8 +35,11 @@ class NoritakeGuParallel:
 
         :param byte: The byte to send.
         """
-        # Wait until the display is ready (RDY = 1)
+        # Wait up to 5000 ms until the display is ready (RDY = 1).
+        start_time = time.ticks_ms()
         while not self.rdy_pin.value():
+            if time.ticks_diff(time.ticks_ms(), start_time) >= 5000:
+                raise OSError('Timed out waiting for display RDY signal.')
             time.sleep(0.001)
 
         # Apply byte to data pins.

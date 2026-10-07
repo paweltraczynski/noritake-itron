@@ -1,7 +1,6 @@
 import time
 import network
 import requests
-import urequests
 from machine import RTC
 
 # Dots on the start are required for RPi Pico/MicroPython boards.
@@ -21,35 +20,47 @@ class ClockTemp:
     """
 
     def __init__(self, vfd, lines, cols):
-        # VFD details.
+        # Display details.
         self.vfd = vfd
         self.lines = lines
         self.cols = cols
 
-        # VFD large digits.
+        # Large digits.
         self.digits = ClockDigits(self.vfd)
 
-        # WLAN.
+        # RTC used by the clock feature.
+        self.rtc = RTC()
+
+        # Wi-Fi.
         self.wlan = network.WLAN(network.STA_IF)
         self.ssid = config.wifi_ssid
         self.password = config.wifi_password
+        self.wifi_last_attempt = None
+        self.wifi_retry_interval = 10 * 1000
 
         # Time settings.
         self.timeapi_api_key = config.time_api_key
         self.timezone = config.time_timezone
+
+        # Time fetching.
+        # Stores the last date synchronization time in ms.
+        self.date_last_fetch =  None
+        self.date_last_attempt = None
+        # 2-hour interval converted to milliseconds.
+        # This low interval is needed for daylight savings time changes.
+        self.date_fetch_interval = 2 * 60 * 60 * 1000
 
         # Weather settings.
         self.weather_api_key = config.weather_api_key
         self.weather_city = config.weather_city
         self.weather_unit = config.weather_unit
 
-        # RTC.
-        self.rtc = RTC()
-        # Stores the last date synchronization time in ms.
-        self.date_last_fetch =  None
-        self.date_last_attempt = None
-        # 6-hour interval converted to milliseconds.
-        self.date_fetch_interval = 6 * 60 * 60 * 1000
+        # Weather fetching.
+        # Stores the last weather synchronization time in ms.
+        self.weather_last_fetch =  None
+        self.weather_last_attempt = None
+        # 10-minutes interval converted to milliseconds.
+        self.weather_fetch_interval = 10 * 60 * 1000
 
         # Fetched weather.
         self.weather = {
@@ -58,25 +69,26 @@ class ClockTemp:
             'conditions': '',
             'success': False,
         }
-        # Stores the last weather synchronization time in ms.
-        self.weather_last_fetch =  None
-        self.weather_last_attempt = None
-        # 10-minutes interval converted to milliseconds.
-        self.weather_fetch_interval = 10 * 60 * 1000
 
         # Failed API requests are retried after one minute.
         self.api_retry_interval = 60 * 1000
         self.api_timeout = 10
 
-        # Track last displayed time and weather.
-        # This is used to prevent writing to the VFD when the time
-        # or weather did not change.
+        # Track last displayed values.
+        # This prevents writing data that did not change to the display.
         self.displayed_time = None
         self.displayed_temperature = None
         self.displayed_humidity = None
 
-        # Current power status (on, dimed, off).
-        self.power_status = 'on'
+        # Track the last time when values were displayed.
+        # This is used to prevent calling print methods more
+        # often than necessary.
+        self.last_time = None
+        self.last_weather = None
+
+        # Track brightness.
+        # Current brightness status (on, dimed, off).
+        self.brightness_status = 'on'
 
         # Matrix Rain animation shown at every full hour.
         self.matrix = MatrixRain(self.vfd, lines, cols)
@@ -86,6 +98,17 @@ class ClockTemp:
         """
         Connects to the Wi-Fi network, retries if the SSID is unavailable.
         """
+        current_ticks = time.ticks_ms()
+
+        # Do not retry connecting more often than the configured interval.
+        if (
+            self.wifi_last_attempt is not None and
+            time.ticks_diff(current_ticks, self.wifi_last_attempt)
+            < self.wifi_retry_interval
+        ):
+            return False
+
+        self.wifi_last_attempt = current_ticks
         self.wlan.active(True)
 
         # Indicate that connection is in progress.
@@ -94,57 +117,75 @@ class ClockTemp:
         self.vfd.write('Connecting Wi-Fi')
         print('Trying to connect to Wi-Fi...')
 
-        while not self.wlan.isconnected():
-            # Initiate a Wi-Fi connection.
+        try:
+            # Initiate a connection and give it up to 10 seconds.
             try:
                 self.wlan.connect(self.ssid, self.password)
-            except OSError:
-                pass
+                for _ in range(10):
+                    if self.wlan.isconnected():
+                        break
+                    time.sleep(1)
+            except OSError as e:
+                print('Wi-Fi connection error:', e)
+                try:
+                    self.wlan.disconnect()
+                except OSError:
+                    pass
+                return False
 
-            # Give this attempt up to 10 seconds.
-            for _ in range(10):
-                if self.wlan.isconnected():
-                    break
-                time.sleep(1)
-
-            # If the connection failed, then try to disconnect before retrying.
             if not self.wlan.isconnected():
                 try:
                     self.wlan.disconnect()
                 except OSError:
                     pass
-
                 print('Wi-Fi unavailable; retrying...')
+                return False
 
-        # At this point, the connection has been established.
-        self.vfd.clearDisplay()
-        self.vfd.setCursor(0, 0)
-        self.vfd.write('Wi-Fi connected')
-        print('Established Wi-Fi connection.')
-        time.sleep(1.5)
+            # Indicate that connection was successful.
+            self.vfd.clearDisplay()
+            self.vfd.setCursor(0, 0)
+            self.vfd.write('Wi-Fi connected')
+            print('Established Wi-Fi connection.')
 
-        # Force the cleared clock and weather values to redraw.
-        self.displayed_time = None
-        self.displayed_temperature = None
-        self.displayed_humidity = None
+            time.sleep(1.5)
+            return True
 
-    def urlEncode(self, string):
-       """
-       Encodes a string to be used in a URL.
+        finally:
+            # Wait the retry interval after this attempt finishes.
+            self.wifi_last_attempt = time.ticks_ms()
 
-       :param string: The string to encode.
+            # Restore the clock and weather after every connection attempt.
+            self.vfd.clearDisplay()
+            self.displayed_time = None
+            self.displayed_temperature = None
+            self.displayed_humidity = None
+            self.last_time = None
+            self.last_weather = None
 
-       :return: The encoded string.
-       """
-       encoded_string = ''
+    def urlEncode(self, value):
+        """
+        Encodes a string to be used in a URL.
 
-       for character in str(string):
-           if character.isalpha() or character.isdigit():
-               encoded_string += character
-           else:
-               encoded_string += f"%{ord(character):x}"
+        :param value: The string to encode.
 
-       return encoded_string
+        :return: The encoded string.
+        """
+        encoded = []
+
+        for byte in str(value).encode('utf-8'):
+            is_unreserved = (
+                ord('A') <= byte <= ord('Z') or
+                ord('a') <= byte <= ord('z') or
+                ord('0') <= byte <= ord('9') or
+                byte in (ord('-'), ord('.'), ord('_'), ord('~'))
+            )
+
+            if is_unreserved:
+                encoded.append(chr(byte))
+            else:
+                encoded.append('%{:02X}'.format(byte))
+
+        return ''.join(encoded)
 
     def urlGetJson(self, url, params = None):
         """
@@ -163,19 +204,33 @@ class ClockTemp:
 
            url = url.rstrip('&')
 
-        response = None
+        response = requests.get(url, timeout = self.api_timeout)
         try:
-            response = requests.get(url, timeout = self.api_timeout)
-
             if response.status_code == 200:
                 return response.json()
-            else:
-                return False
+
+            return False
         finally:
             if response is not None:
                 response.close()
 
-        return False
+    def checkHourInRange(self, hour, start, end):
+        """
+        Checks if the given hour is in the given range.
+
+        :param hour: The hours to check, e.g., 3 or 22.
+        :param start: The start hour of the range.
+        :param end: The end hour of the range.
+
+        :return: True if the hour is in the range, False otherwise.
+        """
+        if start == end:
+            return False
+
+        if start < end:
+            return start <= hour < end
+
+        return hour >= start or hour < end
 
     def fetchDateTime(self):
         """
@@ -193,6 +248,7 @@ class ClockTemp:
         }
 
         self.date_last_attempt = time.ticks_ms()
+        response = None
 
         try:
             # Send the GET request with the required headers.
@@ -222,6 +278,7 @@ class ClockTemp:
 
                 # Save the timestamp of the successful synchronization.
                 self.date_last_fetch = time.ticks_ms()
+
                 response.close()
                 print('Synchronized date and time.')
                 return True
@@ -232,6 +289,8 @@ class ClockTemp:
                 return False
 
         except Exception as e:
+            if hasattr(response, 'close'):
+                response.close()
             print('Date and time synchronization error:', e)
             return False
 
@@ -242,7 +301,7 @@ class ClockTemp:
         current_ticks = time.ticks_ms()
 
         # Fetch date and time from the internet if they weren't fetched yet,
-        # or if they were fetched more than 6 hours ago.
+        # or if they were fetched more than 2 hours ago.
         if (
             (self.date_last_fetch is None) or
             (time.ticks_diff(current_ticks, self.date_last_fetch)
@@ -283,6 +342,56 @@ class ClockTemp:
                 'hour_int': 0,
                 'minute_int': 0,
             }
+
+    def printDateTime(self):
+        """
+        Prints the current time on the display.
+        """
+        current_ticks = time.ticks_ms()
+
+        # Don't print time more often than every 0.2 seconds.
+        if self.last_time is not None and time.ticks_diff(current_ticks, self.last_time) < 200:
+            return
+
+        self.last_time = current_ticks
+
+        # Get date and time.
+        date = self.getDateTime()
+
+        # Print the time if it is set.
+        if date['year'] != 0:
+            time_formatted = '{hour}:{minute}:{second}'.format(
+                hour = date['hour'],
+                minute = date['minute'],
+                second = date['second']
+            )
+
+            # Do so only if it has changed since the last print.
+            if self.displayed_time != time_formatted:
+                hour = str(date['hour'])
+                minute = str(date['minute'])
+
+                self.digits.largeDigit(hour[0], 0)
+                self.digits.largeDigit(hour[1], 3)
+                self.digits.largeDigit(minute[0], 7)
+                self.digits.largeDigit(minute[1], 10)
+                self.displayed_time = time_formatted
+
+                # Blinking colon between hours and minutes.
+                if (date['timestamp'] % 2) == 0:
+                    self.digits.largeDigit('colon', 6)
+                else:
+                    self.digits.largeDigit('erase_colon', 6)
+
+        # If time is not set, then print dashes and static colon.
+        else:
+            if self.displayed_time != '-':
+                self.digits.largeDigit('dash', 0)
+                self.digits.largeDigit('dash', 3)
+                self.digits.largeDigit('dash', 7)
+                self.digits.largeDigit('dash', 10)
+                self.digits.largeDigit('colon', 6)
+                self.displayed_time = '-'
 
     def fetchWeather(self):
         """
@@ -356,7 +465,7 @@ class ClockTemp:
 
             if weather and isinstance(weather, dict):
                 temperature = round(weather['main']['temp'], 1)
-                humidity = round(weather['main']['humidity'], 0)
+                humidity = round(weather['main']['humidity'])
                 conditions = weather['weather'][0]['main']
                 success = True
 
@@ -399,10 +508,73 @@ class ClockTemp:
         # Return the weather data.
         return self.weather
 
+    def printWeather(self):
+        """
+        Prints current weather on the display.
+        """
+        current_ticks = time.ticks_ms()
+
+        # Don't print weather more often than 30 seconds.
+        if (
+            self.displayed_temperature is not None
+            and self.displayed_humidity is not None
+            and self.last_weather is not None
+            and time.ticks_diff(current_ticks, self.last_weather) < 30 * 1000
+        ):
+            return
+
+        self.last_weather = current_ticks
+
+        # Get weather data.
+        weather = self.getWeather()
+
+        # Print weather if it was fetched.
+        if weather['success']:
+            temperature = weather['temperature']
+            humidity = weather['humidity']
+
+            # Temperature should be rounded and always occupying 3
+            # characters because it can, for example, be 5 or -12.
+            temperature = '{:>3.0f}'.format(temperature)
+
+            # Humidity should be rounded and always in range of 0-99,
+            # and also always 2 characters. It should never be more
+            # than 99% because of available space.
+            if humidity > 99:
+                humidity = 99
+
+            # Humidity should always be 2 characters.
+            humidity = '{:>2.0f}'.format(humidity)
+
+            if self.displayed_temperature != temperature:
+                self.vfd.setCursor(13, 0)
+                self.vfd.writeText(temperature)
+                self.displayed_temperature = temperature
+
+            if self.displayed_humidity != humidity:
+                self.vfd.setCursor(14, 1)
+                self.vfd.writeText(humidity)
+                self.displayed_humidity = humidity
+
+        # Clear weather when the fetching has failed.
+        else:
+            if self.displayed_temperature != '--':
+                self.vfd.setCursor(13, 0)
+                self.vfd.writeText(' --')
+                self.displayed_temperature = '--'
+
+                self.vfd.setCursor(14, 1)
+                self.vfd.writeText('--')
+                self.displayed_humidity = '--'
+
     def screenInit(self):
         """
         Initializes VFD large digits and prints a message and then placeholders.
         """
+        # Initialize the display.
+        self.vfd.clearDisplay()
+
+        # Initialize the large digits.
         self.digits.largeDigitsInit()
 
         # Show fetching data message.
@@ -433,100 +605,49 @@ class ClockTemp:
         self.screenInit()
 
         while True:
-            # Get the time.
+            # Update displayed time (fetches new every 2 hours).
+            self.printDateTime()
+
+            # Update displayed weather (fetches new every 10 minutes).
+            self.printWeather()
+
+            # Time needed for further operations.
             date = self.getDateTime()
-
-            # Print the time if it is set.
-            if date['year'] != 0:
-                time_formatted = '{hour}:{minute}'.format(hour = date['hour'], minute = date['minute'])
-
-                # Do so only if it has changed since the last print.
-                if self.displayed_time != time_formatted:
-                    hour = str(date['hour'])
-                    minute = str(date['minute'])
-
-                    self.digits.largeDigit(hour[0], 0)
-                    self.digits.largeDigit(hour[1], 3)
-                    self.digits.largeDigit(minute[0], 7)
-                    self.digits.largeDigit(minute[1], 10)
-                    self.displayed_time = time_formatted
-
-                # Blinking colon between hours and minutes.
-                if (date['timestamp'] % 2) == 0:
-                    self.digits.largeDigit('colon', 6)
-                else:
-                    self.digits.largeDigit('erase_colon', 6)
-
-            # If time is not set, then print dashes and static colon.
-            else:
-                if self.displayed_time != '--:--':
-                    self.digits.largeDigit('dash', 0)
-                    self.digits.largeDigit('dash', 3)
-                    self.digits.largeDigit('dash', 7)
-                    self.digits.largeDigit('dash', 10)
-                    self.digits.largeDigit('colon', 6)
-                    self.displayed_time = '--:--'
-
-            # Get the weather.
-            weather = self.getWeather()
-
-            # Print the weather if it is set.
-            if weather['success']:
-                temperature = weather['temperature']
-                humidity = weather['humidity']
-
-                # Temperature should be rounded and always occupying 3
-                # characters because it can, for example, be 5 or -12.
-                temperature = '{:>3.0f}'.format(temperature)
-
-                # Humidity should be rounded and always in range of 0-99,
-                # and also always 2 characters.
-                # Humidity should never be more than 99% because of
-                # available space.
-                if humidity > 99:
-                    humidity = 99
-
-                # Humidity should always be 2 characters.
-                humidity = '{:>2.0f}'.format(humidity)
-
-                if self.displayed_temperature != temperature:
-                    self.vfd.setCursor(13, 0)
-                    self.vfd.writeText(temperature)
-                    self.displayed_temperature = temperature
-
-                if self.displayed_humidity != humidity:
-                    self.vfd.setCursor(14, 1)
-                    self.vfd.writeText(humidity)
-                    self.displayed_humidity = humidity
-
-            # Wipe out the weather if it is not set.
-            else:
-                if self.displayed_temperature != '--':
-                    self.vfd.setCursor(13, 0)
-                    self.vfd.writeText(' --')
-                    self.displayed_temperature = '--'
-
-                    self.vfd.setCursor(14, 1)
-                    self.vfd.writeText('--')
 
             # Screen dimming at night (requires parallel connection).
             if date['year'] != 0:
                 hour = date['hour_int']
 
-                # Don't send commands if the night dimming is already turned on.
-                if hour == config.vfd_on_hour and self.power_status != 'on':
+                off_hours = self.checkHourInRange(
+                    hour,
+                    config.display_off_start_hour,
+                    config.display_off_end_hour
+                )
+
+                dim_hours = self.checkHourInRange(
+                    hour,
+                    config.display_dim_start_hour,
+                    config.display_dim_end_hour
+                )
+
+                # Off hours.
+                if off_hours:
+                    if self.brightness_status != 'off':
+                        self.vfd.displayOnOff(0)
+                        self.brightness_status = 'off'
+
+                # Dim hours.
+                elif dim_hours:
+                    if self.brightness_status != 'dim':
+                        self.vfd.displayOnOff(1)
+                        self.vfd.setBrightness(1)
+                        self.brightness_status = 'dim'
+
+                # On hours.
+                elif self.brightness_status != 'on':
                     self.vfd.displayOnOff(1)
                     self.vfd.setBrightness(4)
-                    self.power_status = 'on'
-
-                elif hour == config.vfd_dim_hour and self.power_status != 'dim':
-                    self.vfd.displayOnOff(1)
-                    self.vfd.setBrightness(1)
-                    self.power_status = 'dim'
-
-                elif hour == config.vfd_off_hour and self.power_status != 'off':
-                    self.vfd.displayOnOff(0)
-                    self.power_status = 'off'
+                    self.brightness_status = 'on'
 
             # Show Matrix Rain animation once in an hour, e.g., at 5:00 or 12:00.
             if date['year'] != 0 and config.matrix_rain_duration != 0:
@@ -543,6 +664,8 @@ class ClockTemp:
                     self.displayed_time = None
                     self.displayed_temperature = None
                     self.displayed_humidity = None
+                    self.last_weather = None
+                    self.last_time = None
 
             # Reconnect Wi-Fi if needed.
             if not self.wlan.isconnected():

@@ -127,11 +127,14 @@ class NoritakeGu:
         # Bus lock forces main thread script to wait before sending commands
         # to the display if separate thread is currently sending its command.
         self.bus_lock = self.threadLock()
+        self.bus_lock_owner = None
+        self.bus_lock_depth = 0
 
         # Bus busy flag is set by the main script and forces a separate threads
         # script to wait before sending commands to the display. Using this
         # method gives the main thread priority over the other threads.
         self.bus_busy = False
+        self.bus_busy_states = []
 
         #### Noritake Commands. ###
 
@@ -204,27 +207,28 @@ class NoritakeGu:
         :param set_busy: True prevents background threads from sending commands
         while this command is being executed.
         """
+        self.acquireBus()
         was_bus_busy = self.bus_busy
 
         if set_busy and not was_bus_busy:
             self.bus_busy = True
 
         try:
-            with self.bus_lock:
-                if isinstance(value, bytes) or isinstance(value, bytearray):
-                    self.bus.write(value)
+            if isinstance(value, bytes) or isinstance(value, bytearray):
+                self.bus.write(value)
 
-                elif isinstance(value, str):
-                    self.bus.write(value.encode())
+            elif isinstance(value, str):
+                self.bus.write(value.encode())
 
-                elif isinstance(value, (list, tuple)):
-                    self.bus.write(bytes(value))
+            elif isinstance(value, (list, tuple)):
+                self.bus.write(bytes(value))
 
-                else:
-                    self.bus.write(bytes([value]))
+            else:
+                self.bus.write(bytes([value]))
         finally:
             if set_busy and not was_bus_busy:
                 self.bus_busy = False
+            self.releaseBus()
 
     def writeText(self, value, set_busy = True):
         """
@@ -578,13 +582,16 @@ class NoritakeGu:
         if size not in self.vfd_font_sizes:
             raise ValueError('Font size must be between 1 and 6.')
 
-        # Keep track of the current font size.
-        self.vfd_font_size_current = size
-
         command = bytearray(self.font_size)
         # Parameter 'm' - font size select byte.
         command.append(self.vfd_font_sizes[size]['hex'])
-        self.write(command)
+        self.acquireBus()
+        try:
+            self.write(command)
+            # Keep track of the current font size.
+            self.vfd_font_size_current = size
+        finally:
+            self.releaseBus()
 
     # 2-byte character.
     # 2-byte character type.
@@ -993,10 +1000,29 @@ class NoritakeGu:
         :param y: Y position of the image
         :param data: The data of the image, including its size.
         """
+        if len(data) < 4:
+            raise ValueError('Image data must include a 4-byte size header.')
+
         # Extract dimensions, which are the first 4 bytes.
         width = data[0] + (data[1] << 8)
         height = data[2] + (data[3] << 8)
         raw_pixels = data[4:]
+
+        if width <= 0 or height <= 0:
+            raise ValueError('Image width and height must be positive.')
+
+        if height % 8 != 0:
+            raise ValueError('Image height must be divisible by 8.')
+
+        # Each byte stores 8 vertical pixels in one column.
+        expected_size = width * (height // 8)
+
+        if len(raw_pixels) != expected_size:
+            raise ValueError(
+                'Image pixel data for the specified width and height must contain {} bytes; got {}.'.format(
+                    expected_size, len(raw_pixels)
+                )
+            )
 
         # Universal interleave logic.
         # 'num_rows' is how many bytes make up one vertical column.
@@ -1033,6 +1059,8 @@ class NoritakeGu:
             0x01
         ])
         # Set busy flag manually.
+        self.acquireBus()
+        bus_busy_was = self.bus_busy
         try:
             self.bus_busy = True
             self.write(command, False)
@@ -1051,8 +1079,9 @@ class NoritakeGu:
                     time.sleep(3 / 1000000)
 
         finally:
-            # Clear the busy flag manually after the image has been sent.
-            self.bus_busy = False
+            # Restore the busy flag manually after the image has been sent.
+            self.bus_busy = bus_busy_was
+            self.releaseBus()
 
     def drawText(self, x, y, text, clear = True):
         """
@@ -1175,16 +1204,18 @@ class NoritakeGu:
         if win_id not in win_ids:
             raise ValueError('Window id must be between 0 and 4.')
 
-        # Keep track of currently active window.
-        if win_id in self.vfd_windows:
-            self.vfd_current_window = win_id
-        else:
-            raise ValueError('The selected window does not exist.')
-
         command = bytearray(self.window_select)
         # Parameter 'a' - window id.
         command.append(win_ids[win_id])
-        self.write(command, set_busy)
+        self.acquireBus()
+        try:
+            if win_id not in self.vfd_windows:
+                raise ValueError('The selected window does not exist.')
+            self.write(command, set_busy)
+            # Keep track of currently active window.
+            self.vfd_current_window = win_id
+        finally:
+            self.releaseBus()
 
     def windowDefine(self, win_id, x, y, width, height):
         """
@@ -1392,45 +1423,52 @@ class NoritakeGu:
         text_len = len(text_padded)
 
         # Register the scrolling text by id.
-        self.vfd_scrolling_texts[win_id] = True
+        scroll_token = object()
+        self.vfd_scrolling_texts[win_id] = scroll_token
 
         # Scrolling text loop.
         def scrolling_loop():
             index = 0
             first_frame = True
 
-            while self.vfd_scrolling_texts.get(win_id, False):
-                if not self.bus_busy:
-                    # Get a slice of text with a fixed length.
-                    text_slice = ''
-                    for i in range(max_chars):
-                        text_slice += text_padded[(index + i) % text_len]
+            while self.vfd_scrolling_texts.get(win_id) is scroll_token:
+                self.acquireBus()
+                try:
+                    # Re-check in case the animation changed while waiting for the bus.
+                    if self.vfd_scrolling_texts.get(win_id) is not scroll_token:
+                        return
+                    frame_drawn = not self.bus_busy
+                    if frame_drawn:
+                        # Get a slice of text with a fixed length.
+                        text_slice = ''
+                        for i in range(max_chars):
+                            text_slice += text_padded[(index + i) % text_len]
 
-                    # Update the display window content.
-                    # Switch window before if needed.
-                    previous_window = self.vfd_current_window
-                    if self.vfd_current_window != win_id:
-                        self.windowSelect(win_id)
+                        # Update the display window content.
+                        # Switch window before if needed.
+                        previous_window = self.vfd_current_window
+                        if self.vfd_current_window != win_id:
+                            self.windowSelect(win_id)
 
-                    self.fontSize(font_size)
-                    self.clearDisplay()
-                    self.write(self.encodeText(text_slice))
-                    self.fontSize(1)
+                        self.fontSize(font_size)
+                        self.clearDisplay()
+                        self.write(self.encodeText(text_slice))
+                        self.fontSize(1)
 
-                    # Switch window after if needed.
-                    if previous_window != win_id:
-                        self.windowSelect(previous_window)
+                        # Switch window after if needed.
+                        if previous_window != win_id:
+                            self.windowSelect(previous_window)
 
-                    # Move the slice index by 1 character.
-                    index = (index + 1) % text_len
+                        # Move the slice index by 1 character.
+                        index = (index + 1) % text_len
+                finally:
+                    self.releaseBus()
 
-                    # Wait a moment before the text starts scrolling.
-                    if first_frame:
-                        time.sleep(2)
-                        first_frame = False
-                    else:
-                        time.sleep(delay)
-
+                # Wait a moment before the text starts scrolling.
+                # Keep sleeps outside the locked drawing operation.
+                if frame_drawn and first_frame:
+                    time.sleep(2)
+                    first_frame = False
                 else:
                     time.sleep(delay)
 
@@ -1501,34 +1539,41 @@ class NoritakeGu:
         text_len = len(text_padded)
 
         # Register the scrolling text by id.
-        self.vfd_scrolling_texts[scroll_id] = True
+        scroll_token = object()
+        self.vfd_scrolling_texts[scroll_id] = scroll_token
 
         # Scrolling text loop.
         def scrolling_loop():
             index = 0
             first_frame = True
 
-            while self.vfd_scrolling_texts.get(scroll_id, False):
-                if not self.bus_busy:
-                    # Get a slice of text with a fixed length.
-                    text_slice = ''
-                    for i in range(max_chars):
-                        text_slice += text_padded[(index + i) % text_len]
+            while self.vfd_scrolling_texts.get(scroll_id) is scroll_token:
+                self.acquireBus()
+                try:
+                    # Re-check in case the animation changed while waiting for the bus.
+                    if self.vfd_scrolling_texts.get(scroll_id) is not scroll_token:
+                        return
+                    frame_drawn = not self.bus_busy
+                    if frame_drawn:
+                        # Get a slice of text with a fixed length.
+                        text_slice = ''
+                        for i in range(max_chars):
+                            text_slice += text_padded[(index + i) % text_len]
 
-                    self.fontSize(font_size)
-                    self.drawText(x, y, text_slice, False)
-                    self.fontSize(1)
+                        self.fontSize(font_size)
+                        self.drawText(x, y, text_slice, False)
+                        self.fontSize(1)
 
-                    # Move the slice index by 1 character.
-                    index = (index + 1) % text_len
+                        # Move the slice index by 1 character.
+                        index = (index + 1) % text_len
+                finally:
+                    self.releaseBus()
 
-                    # Wait a moment before the text starts scrolling.
-                    if first_frame:
-                        time.sleep(2)
-                        first_frame = False
-                    else:
-                        time.sleep(delay)
-
+                # Wait a moment before the text starts scrolling.
+                # Keep sleeps outside the locked drawing operation.
+                if frame_drawn and first_frame:
+                    time.sleep(2)
+                    first_frame = False
                 else:
                     time.sleep(delay)
 
@@ -1541,9 +1586,11 @@ class NoritakeGu:
 
         :param scroll_id: The id of the scrolling text to stop.
         """
-        if scroll_id in self.vfd_scrolling_texts:
-            # Setting this to false breaks the while loop in scrolling_loop().
-            self.vfd_scrolling_texts[scroll_id] = False
+        self.acquireBus()
+        try:
+            self.vfd_scrolling_texts.pop(scroll_id, None)
+        finally:
+            self.releaseBus()
 
     def scrollingTextStopAll(self):
         """
@@ -1552,27 +1599,39 @@ class NoritakeGu:
         Useful before exiting the main script on Raspberry Pi Pico, because
         MicroPython _thread does not provide a safe way to force-kill a thread.
         """
-        for scroll_id in self.vfd_scrolling_texts:
-            self.vfd_scrolling_texts[scroll_id] = False
+        self.acquireBus()
+        try:
+            self.vfd_scrolling_texts.clear()
+        finally:
+            self.releaseBus()
 
     def busBusySet(self, window = 0):
         """
-        Sets the busy flag to prevent scrolling text threads from writing.
+        Locks the display bus and prevents scrolling text threads from writing.
 
         :param window: Pass an id of a window in which to write data.
         """
-        # Set the busy flag.
+        self.acquireBus()
+        self.bus_busy_states.append(self.bus_busy)
         self.bus_busy = True
-
-        # Select the window to write to.
-        if self.vfd_current_window != window:
-            self.windowSelect(window, False)
+        try:
+            # Select the window to write to.
+            if self.vfd_current_window != window:
+                self.windowSelect(window, False)
+        except Exception:
+            self.bus_busy = self.bus_busy_states.pop()
+            self.releaseBus()
+            raise
 
     def busBusyCancel(self):
         """
-        Cancels the busy flag, allowing scrolling text threads to write again.
+        Restores the busy flag and releases the display bus lock.
         """
-        self.bus_busy = False
+        owner = threading.get_ident() if threading_api == 'threading' else _thread.get_ident()
+        if self.bus_lock_owner != owner or not self.bus_busy_states:
+            raise RuntimeError('busBusyCancel() must match busBusySet() on the same thread.')
+        self.bus_busy = self.bus_busy_states.pop()
+        self.releaseBus()
 
     # .-----------------------------------------------------.
     # |                 CUSTOM DUAL SCREEN                  |
@@ -1633,15 +1692,16 @@ class NoritakeGu:
 
         See actionScroll() for an explanation of parameters.
 
-        :param cycles: Number of scroll cycles.
+        :param cycles: Number of scroll cycles; must divide the screen byte count exactly.
         :param speed: The scroll speed value 0-255.
         """
         # Validate cycles.
-        if cycles < 1 or cycles > 255:
-            raise ValueError('Cycles must be between 1 and 255')
-
+        if not isinstance(cycles, int) or cycles < 1 or cycles > 255:
+            raise ValueError('Cycles must be an integer between 1 and 255.')
 
         shift_bytes = self.vfd_x_pixels * self.vfd_y_pages
+        if shift_bytes % cycles != 0:
+            raise ValueError('Cycles must divide the screen byte count exactly.')
         shift = shift_bytes // cycles
 
         # Trigger the scroll display action.
@@ -1958,6 +2018,26 @@ class NoritakeGu:
     # |               COMPATIBILITY FUNCTIONS               |
     # '-----------------------------------------------------'
 
+    def acquireBus(self):
+        """Acquire the bus, allowing nested calls by its owning thread."""
+        owner = threading.get_ident() if threading_api == 'threading' else _thread.get_ident()
+        if self.bus_lock_owner == owner:
+            self.bus_lock_depth += 1
+            return
+        self.bus_lock.acquire()
+        self.bus_lock_owner = owner
+        self.bus_lock_depth = 1
+
+    def releaseBus(self):
+        """Release the bus after the owning thread's outermost call."""
+        owner = threading.get_ident() if threading_api == 'threading' else _thread.get_ident()
+        if self.bus_lock_owner != owner:
+            raise RuntimeError('Cannot release the display bus from another thread.')
+        self.bus_lock_depth -= 1
+        if self.bus_lock_depth == 0:
+            self.bus_lock_owner = None
+            self.bus_lock.release()
+
     def threadLock(self):
         """
         Creates a thread lock using the available platform API.
@@ -2002,4 +2082,3 @@ class NoritakeGu:
                 raise SystemExit('threadStart() error: neither threading nor _thread are available.')
 
         self.thread_start(function)
-

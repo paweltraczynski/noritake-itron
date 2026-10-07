@@ -150,9 +150,10 @@ edits in the copy:
 - `weather_api_key` - the system needs to access the OpenWeatherMap API to get the weather data
 - `weather_city` - provide the city for which to show the weather
 - `weather_unit` - set either to 'metric' or 'imperial'
-- `vfd_dim_hour` - at what hour the VFD should dim because it is early night
-- `vfd_off_hour` - at what hour the VFD should turn off because it is late night
-- `vfd_on_hour` - at what hour in the morning the VFD should turn on again
+- `display_dim_start_hour` - at what hour the display should dim because it is early night
+- `display_dim_end_hour` - at what hour the display should finish dimming
+- `display_off_start_hour` - at what hour the display should turn off because it is late night
+- `display_off_end_hour` - at what hour the display should turn on again
 - `matrix_rain_duration` - for how long the Matrix Rain animation should show up
   at every full hour. Set to 0 to disable it entirely.
 

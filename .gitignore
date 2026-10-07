@@ -3,3 +3,6 @@
 
 # Local config file.
 CU_Series/demo/clock_config_local.py
+
+# Windows files.
+desktop.ini

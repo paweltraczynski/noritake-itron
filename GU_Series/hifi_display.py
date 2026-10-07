@@ -82,6 +82,7 @@ class HiFiDisplay:
         # Track when the message was shown to clear it after few seconds.
         self.message_time = 0
         self.message_watcher_running = False
+        self.message_lock = self.no.threadLock()
 
         # Threading compatibility functions (MicroPython, CPython).
         self.thread_start = False
@@ -120,10 +121,15 @@ class HiFiDisplay:
         bar_end = bar_start + bar_width
         icon_x = bar_start - 13
 
+        # Print volume indicator icon volume bar outer rectangle and 0.
         self.no.busBusySet(1)
-        self.no.printImage(icon_x, 0, self.icons['speaker'])
-        self.no.drawLineBox('box', True, bar_start, 0, bar_end, 6)
-        self.no.busBusyCancel()
+        try:
+            self.no.printImage(icon_x, 0, self.icons['speaker'])
+            self.no.drawLineBox('box', True, bar_start, 0, bar_end, 6)
+            self.no.setCursor(bar_end + 6, 0)
+            self.no.write('0')
+        finally:
+            self.no.busBusyCancel()
 
         # Print button icons.
         self.printButtonIcon(1, 'play_prev')
@@ -160,12 +166,13 @@ class HiFiDisplay:
         # Set busy flag and select the window.
         self.no.busBusySet(1)
 
-        # Display track number.
-        self.no.setCursor(0, 0)
-        self.no.write(padded_track)
-
-        # Cancel busy flag.
-        self.no.busBusyCancel()
+        try:
+            # Display track number.
+            self.no.setCursor(0, 0)
+            self.no.write(padded_track)
+        finally:
+            # Cancel busy flag.
+            self.no.busBusyCancel()
 
         # Save current value.
         self.current_values['track_display'] = new_track
@@ -214,12 +221,13 @@ class HiFiDisplay:
         # Set busy flag and select the window.
         self.no.busBusySet(1)
 
-        # Display track time.
-        self.no.setCursor(cursor_x, 0)
-        self.no.write(padded_time)
-
-        # Cancel busy flag.
-        self.no.busBusyCancel()
+        try:
+            # Display track time.
+            self.no.setCursor(cursor_x, 0)
+            self.no.write(padded_time)
+        finally:
+            # Cancel busy flag.
+            self.no.busBusyCancel()
 
         self.current_values['time_display'] = new_time
         self.current_values['time_elapsed'] = elapsed
@@ -251,6 +259,7 @@ class HiFiDisplay:
         # Bar inner rectangle is smaller than the bar itself.
         bar_min = bar_start + 2
         bar_max = bar_end - 2
+        bar_inner_width = bar_max - bar_min + 1
         bar_top = 0
 
         # Percent position.
@@ -262,17 +271,17 @@ class HiFiDisplay:
                 bar_top = bar_max
             else:
                 # Standard linear mapping with truncation down.
-                bar_add = int(percent * bar_width / 100.0)
+                bar_add = int(percent * bar_inner_width / 100.0)
 
                 # Since at this point the percent is not zero, we need
                 # to have at least one pixel in the volume bar.
                 if bar_add == 0:
                     bar_add = 1
 
-                bar_top = bar_min + bar_add
+                bar_top = bar_min + bar_add - 1
 
         # Prepare the old and new percent text.
-        old_percent = f"{math.ceil(int(self.current_values['volume']))}"
+        old_percent = f"{math.ceil(float(self.current_values['volume']))}"
         new_percent = f'{math.ceil(percent)}'
 
         # Create the final text by adding spaces to the end so that
@@ -282,19 +291,21 @@ class HiFiDisplay:
         # Set busy flag and select the window.
         self.no.busBusySet(1)
 
-        # Clear previous volume bar if needed.
-        if self.current_values['volume'] > percent:
-            self.no.drawLineBox('box_fill', False, bar_min, 2, bar_max, 4)
+        try:
+            # Clear previous volume bar if needed.
+            if self.current_values['volume'] > percent:
+                self.no.drawLineBox('box_fill', False, bar_min, 2, bar_max, 4)
 
-        # Print the volume bar.
-        self.no.drawLineBox('box_fill', True, bar_min, 2, bar_top, 4)
+            # Print the volume bar.
+            if percent > 0:
+                self.no.drawLineBox('box_fill', True, bar_min, 2, bar_top, 4)
 
-        # Print rounded percent.
-        self.no.setCursor(percent_pos, 0)
-        self.no.write(padded_percent)
-
-        # Cancel busy flag.
-        self.no.busBusyCancel()
+            # Print rounded percent.
+            self.no.setCursor(percent_pos, 0)
+            self.no.write(padded_percent)
+        finally:
+            # Cancel busy flag.
+            self.no.busBusyCancel()
 
         # Save current volume.
         self.current_values['volume'] = percent
@@ -316,15 +327,18 @@ class HiFiDisplay:
         # Set busy flag and select the window.
         self.no.busBusySet(1)
 
-        self.no.fontSize(2)
-        # The title encoding of non-ASCII characters is performed in the
-        # drawText() function.
-        self.no.scrollingDrawTextStart(5, 0, 14, self.no.vfd_x_pixels, title, 2, 0.16, 4)
-        # Restore default font size.
-        self.no.fontSize(1)
-
-        # Cancel busy flag.
-        self.no.busBusyCancel()
+        try:
+            self.no.fontSize(2)
+            # The title encoding of non-ASCII characters is performed in the
+            # drawText() function.
+            self.no.scrollingDrawTextStart(5, 0, 14, self.no.vfd_x_pixels, title, 2, 0.16, 4)
+        finally:
+            try:
+                # Restore default font size.
+                self.no.fontSize(1)
+            finally:
+                # Cancel busy flag.
+                self.no.busBusyCancel()
 
         # Save current value.
         self.current_values['title'] = title
@@ -346,12 +360,13 @@ class HiFiDisplay:
         # Set busy flag and select the window.
         self.no.busBusySet(1)
 
-        # The artist encoding of non-ASCII characters is performed in the
-        # drawText() function.
-        self.no.drawText(0, 36, artist)
-
-        # Cancel busy flag.
-        self.no.busBusyCancel()
+        try:
+            # The artist encoding of non-ASCII characters is performed in the
+            # drawText() function.
+            self.no.drawText(0, 36, artist)
+        finally:
+            # Cancel busy flag.
+            self.no.busBusyCancel()
 
         # Save current value.
         self.current_values['artist'] = artist
@@ -394,10 +409,11 @@ class HiFiDisplay:
         # Set busy flag and select the window.
         self.no.busBusySet(1)
 
-        self.no.printImage(x, y, self.icons[icon_key])
-
-        # Cancel busy flag.
-        self.no.busBusyCancel()
+        try:
+            self.no.printImage(x, y, self.icons[icon_key])
+        finally:
+            # Cancel busy flag.
+            self.no.busBusyCancel()
 
         # Save current value.
         self.current_values[button_key] = icon_key
@@ -412,14 +428,21 @@ class HiFiDisplay:
         if self.message_shown:
             return
 
-        position = 0
+        positions = {
+            'play_prev': 1,
+            'play_play': 2,
+            'play_pause': 2,
+            'play_stop': 3,
+            'play_next': 4,
+            'volume_down': 5,
+            'volume_up': 6,
+            'power': 7,
+        }
 
-        if icon_key == 'play_play':
-            position = 2
-        elif icon_key == 'play_pause':
-            position = 2
+        if icon_key not in positions:
+            raise ValueError('No button position assigned for icon: {}'.format(icon_key))
 
-        self.printButtonIcon(position, icon_key)
+        self.printButtonIcon(positions[icon_key], icon_key)
 
     # .-----------------------------------------------------.
     # |                  SPECIAL FUNCTIONS                  |
@@ -432,27 +455,32 @@ class HiFiDisplay:
         This function can be called after performing a curtain, spring, or
         random screen switch command that wipes the original screen.
         """
-        values = self.current_values.copy()
+        with self.message_lock:
+            self.no.busBusySet(1)
+            try:
+                values = self.current_values.copy()
 
-        # Clear values so that they are reprinted.
-        for key, value in self.current_values.items():
-            if isinstance(value, int):
-                self.current_values[key] = 0
-            elif isinstance(value, float):
-                self.current_values[key] = 0.0
-            else:
-                self.current_values[key] = ''
+                # Clear values so that they are reprinted.
+                for key, value in self.current_values.items():
+                    if isinstance(value, int):
+                        self.current_values[key] = 0
+                    elif isinstance(value, float):
+                        self.current_values[key] = 0.0
+                    else:
+                        self.current_values[key] = ''
 
-        # Reprint everything.
-        self.no.clearDisplay()
-        self.printInitial()
-        self.printTrack(values['track_current'], values['track_total'])
-        self.printTime(int(values['time_elapsed']), int(values['time_total']))
-        self.printVolume(values['volume'])
-        self.printTitle(values['title'])
-        self.printArtist(values['artist'])
-        # Currently, only the second button changes (play/pause).
-        self.printButtonAuto(values['button_2'])
+                # Reprint everything.
+                self.no.clearDisplay()
+                self.printInitial()
+                self.printTrack(values['track_current'], values['track_total'])
+                self.printTime(int(values['time_elapsed']), int(values['time_total']))
+                self.printVolume(values['volume'])
+                self.printTitle(values['title'])
+                self.printArtist(values['artist'])
+                # Currently, only the second button changes (play/pause).
+                self.printButtonAuto(values['button_2'])
+            finally:
+                self.no.busBusyCancel()
 
     # .-----------------------------------------------------.
     # |                  MESSAGE FUNCTIONS                  |
@@ -482,89 +510,94 @@ class HiFiDisplay:
         else:
             return
 
-        # Mark message mode as shown.
-        self.message_shown = True
+        with self.message_lock:
+            # Mark message mode as shown.
+            self.message_shown = True
 
-        # If this is the first message, extra commands are sent to the VFD.
-        first_message = self.no.vfd_current_screen != 2
-        target_window = 2 if first_message else 1
+            # If this is the first message, extra commands are sent to the VFD.
+            first_message = self.no.vfd_current_screen != 2
+            target_window = 2 if first_message else 1
 
-        # Set busy flag and select the window.
-        self.no.busBusySet(target_window)
+            # Set busy flag and select the window.
+            self.no.busBusySet(target_window)
 
-        try:
-            # Define message box size and font size.
-            # TOOD: Move these to inits config section.
-            box_width = 160
-            box_height = 32
-            shadow_offset = 2
-            font_size = 2
+            try:
+                # Define message box size and font size.
+                # TOOD: Move these to inits config section.
+                box_width = 160
+                box_height = 32
+                shadow_offset = 2
+                font_size = 2
 
-            # Fetch font metrics.
-            font_metrics = self.no.vfd_font_sizes[font_size]
-            char_width = font_metrics['width']
+                # Fetch font metrics.
+                font_metrics = self.no.vfd_font_sizes[font_size]
+                char_width = font_metrics['width']
 
-            # Calculate box starting coordinates for a centered box.
-            # X and Y are counted from 0 for the 1st pixel, 1 for the 2nd, and so on.
-            x1 = (self.no.vfd_x_pixels - box_width) // 2
-            y1 = (self.no.vfd_y_pixels - box_height) // 2
+                # Calculate box starting coordinates for a centered box.
+                # X and Y are counted from 0 for the 1st pixel, 1 for the 2nd, and so on.
+                x1 = (self.no.vfd_x_pixels - box_width) // 2
+                y1 = (self.no.vfd_y_pixels - box_height) // 2
 
-            # Calculate box ending coordinates.
-            # Decrease by -1px so that the right/bottom edges are within the box size.
-            x2 = x1 + box_width - 1
-            y2 = y1 + box_height - 1
+                # Calculate box ending coordinates.
+                # Decrease by -1px so that the right/bottom edges are within the box size.
+                x2 = x1 + box_width - 1
+                y2 = y1 + box_height - 1
 
-            # Clamp the message to the maximum width so it fits within the box.
-            text_max = (box_width - 10) // char_width
-            if len(message) > text_max:
-                message = message[:text_max - 2] + '..'
+                # Clamp the message to the maximum width so it fits within the box.
+                text_max = (box_width - 10) // char_width
+                if len(message) > text_max:
+                    message = message[:text_max - 2] + '..'
 
-            # Calculate the total width of the text string in pixels.
-            text_length = len(message)
-            text_width = text_length * char_width
+                # Calculate the total width of the text string in pixels.
+                text_length = len(message)
+                text_width = text_length * char_width
 
-            # Calculate coordinates to center the text perfectly within the box.
-            offset_x = (box_width - text_width) // 2
-            cursor_x = x1 + offset_x
-            cursor_y = (self.no.vfd_y_pages // 2) - 1
+                # Calculate coordinates to center the text perfectly within the box.
+                offset_x = (box_width - text_width) // 2
+                cursor_x = x1 + offset_x
+                cursor_y = (self.no.vfd_y_pages // 2) - 1
 
-            # Save the message time.
-            self.message_time = self.timeTicksMs()
+                # Save the message time.
+                self.message_time = self.timeTicksMs()
 
-            if first_message:
-                self.no.clearDisplay()
+                if first_message:
+                    self.no.clearDisplay()
 
-                # Print the message box shadow and content area.
-                self.no.drawLineBox(
-                    'box_fill', True,
-                    x1 + shadow_offset,
-                    y1 + shadow_offset,
-                    x2 + shadow_offset,
-                    y2 + shadow_offset
-                )
+                    # Print the message box shadow and content area.
+                    self.no.drawLineBox(
+                        'box_fill', True,
+                        x1 + shadow_offset,
+                        y1 + shadow_offset,
+                        x2 + shadow_offset,
+                        y2 + shadow_offset
+                    )
 
-                # Print the message box content area.
-                self.no.drawLineBox('box', True, x1, y1, x2, y2)
+                    # Print the message box content area.
+                    self.no.drawLineBox('box', True, x1, y1, x2, y2)
 
-            # Clear the internal area inside the box.
-            self.no.drawLineBox('box_fill', False, x1 + 1, y1 + 1, x2 - 1, y2 - 1)
+                # Clear the internal area inside the box.
+                self.no.drawLineBox('box_fill', False, x1 + 1, y1 + 1, x2 - 1, y2 - 1)
 
-            # Set cursor position and write the message.
-            self.no.setCursor(cursor_x, cursor_y)
-            self.no.fontSize(font_size)
-            self.no.write(self.no.encodeText(message), False)
-            self.no.fontSize(1)
+                # Set cursor position and write the message.
+                self.no.setCursor(cursor_x, cursor_y)
+                self.no.fontSize(font_size)
+                self.no.write(self.no.encodeText(message), False)
+                self.no.fontSize(1)
 
-            # Show the message.
-            if first_message:
-                self.no.switchScreenScroll(1, 0)
+                # Show the message.
+                if first_message:
+                    self.no.switchScreenScroll(1, 0)
 
-            if not self.message_watcher_running:
-                self.message_watcher_running = True
-                self.threadStart(self.messageWatcher)
+                if not self.message_watcher_running:
+                    self.message_watcher_running = True
+                    try:
+                        self.threadStart(self.messageWatcher)
+                    except Exception:
+                        self.message_watcher_running = False
+                        raise
 
-        finally:
-            self.no.busBusyCancel()
+            finally:
+                self.no.busBusyCancel()
 
     def messageWatcher(self):
         """
@@ -573,49 +606,40 @@ class HiFiDisplay:
         while True:
             time.sleep(0.1)
 
-            if not self.message_shown:
-                break
+            with self.message_lock:
+                if not self.message_shown:
+                    self.message_watcher_running = False
+                    return
 
-            # Measure how long it has been since the latest showMessage() call.
-            # Every new message updates self.message_time, so this is a rolling
-            # timeout.
-            elapsed = self.timeTicksDiff(self.timeTicksMs(), self.message_time)
+                # Measure how long it has been since the latest showMessage() call.
+                # Every new message updates self.message_time, so this is a rolling
+                # timeout.
+                elapsed = self.timeTicksDiff(self.timeTicksMs(), self.message_time)
 
-            # The latest message has not been visible long enough yet.
-            # Keep waiting.
-            if elapsed < self.message_timeout * 1000:
-                continue
+                # The latest message has not been visible long enough yet.
+                # Keep waiting.
+                if elapsed < self.message_timeout * 1000:
+                    continue
 
-            # We appear to be timed out, so take control of the display bus
-            # before switching screens. This prevents another display update
-            # from writing halfway through the screen switch.
-            self.no.busBusySet(1)
+                # Set busy flag and select the window before switching screens.
+                try:
+                    self.no.busBusySet(1)
+                    try:
+                        # Only switch if the message screen is currently displayed.
+                        # Otherwise, this would accidentally toggle away from the main screen.
+                        if self.no.vfd_current_screen == 2:
+                            self.no.switchScreenScroll(1, 0)
+                    finally:
+                        # Release the display bus for normal screen updates.
+                        self.no.busBusyCancel()
+                finally:
+                    # Mark message mode as finished.
+                    self.message_shown = False
 
-            # Re-check the elapsed time after acquiring the bus.
-            # A new showMessage() call may have happened between the earlier
-            # timeout check and this point, refreshing self.message_time.
-            elapsed = self.timeTicksDiff(self.timeTicksMs(), self.message_time)
+                    # Allow a future showMessage() call to start a fresh watcher thread.
+                    self.message_watcher_running = False
 
-            # If a newer message refreshed the timeout while we were taking
-            # the bus, release the bus and keep watching instead of exiting.
-            if elapsed < self.message_timeout * 1000:
-                self.no.busBusyCancel()
-                continue
-
-            # Only switch if the message screen is currently displayed.
-            # Otherwise, this would accidentally toggle away from the main screen.
-            if self.message_shown and self.no.vfd_current_screen == 2:
-                self.no.switchScreenScroll(1, 0)
-
-            # Mark message mode as finished.
-            self.message_shown = False
-
-            # Release the display bus for normal screen updates.
-            self.no.busBusyCancel()
-            break
-
-        # Allow a future showMessage() call to start a fresh watcher thread.
-        self.message_watcher_running = False
+                return
 
     def formatTone(self, percent):
         """
@@ -715,7 +739,7 @@ class HiFiDisplay:
                 self.ticks_ms = lambda: int(time.monotonic() * 1000)
 
             else:
-                raise SystemExit('timeTickMs() error: neither ticks_ms(), monotonic_ns() nor monotonic() methods exist in time.')
+                raise SystemExit('timeTicksMs() error: neither ticks_ms(), monotonic_ns() nor monotonic() methods exist in time.')
 
         return self.ticks_ms()
 

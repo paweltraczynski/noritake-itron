@@ -185,9 +185,11 @@ class NoritakeCuFunctions(LcdApi):
         Puts cursor at the start of the line, then fills the line
         with spaces, then moves cursor to start.
         """
-        self.setCursor(0, self.cursor_y)
+        y = self.cursor_y
+
+        self.setCursor(0, y)
         self.writeText(' ' * self.num_columns)
-        self.setCursor(0, self.cursor_y)
+        self.setCursor(0, y)
 
     def clearLineRight(self):
         """
@@ -197,8 +199,10 @@ class NoritakeCuFunctions(LcdApi):
         then moves the cursor back to where it was.
         """
         x = self.cursor_x
-        self.writeText(' ' * (self.num_columns - self.cursor_x))
-        self.setCursor(x, self.cursor_y)
+        y = self.cursor_y
+
+        self.writeText(' ' * (self.num_columns - x))
+        self.setCursor(x, y)
 
     # .-----------------------------------------------------.
     # |                  GENERAL COMMANDS                   |

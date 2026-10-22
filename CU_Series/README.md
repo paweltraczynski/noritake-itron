@@ -98,13 +98,17 @@ The 4 pins on the side of the converter connect directly to the GPIO port using 
 
 There are two demo scripts that you can run and customize to your needs:
 - Matrix Rain animation (`matrix_rain.py`)
-- Digital Clock (`clock.py`, `clock_digits.py` and `clock_config.py`)
+- Digital Clock (`clock.py`)
+- Weather Clock (`weather_clock.py`)
 
 To test if everything works, you can run the Matrix Rain demo script first
 as it has no configuration and does not rely on the internet connection
 and third party APIs.
 
 ## Matrix Rain animation demo
+
+The Matrix Rain animation requires these files:
+- `matrix_rain.py`
 
 To run the Matrix Rain animation, you need to make changes in the `main_gpio.py` or
 in `main_i2c.py` depending on what connection type you are using.
@@ -133,6 +137,13 @@ You can see the result of working Matrix Rain below
 
 ### Digital Clock demo
 
+The Digital Clock requires these files:
+- `clock.py`
+- `matrix_rain.py`
+- `fetchers.py`
+- `config.py`
+- `large_digits_2_rows.py`
+
 To run the Digital Clock, first you need to make the same changes as explained
 in the Matrix Rain animation demo section, except this time you would have
 to uncomment the code related to the clock functionality:
@@ -141,7 +152,7 @@ to uncomment the code related to the clock functionality:
 # clock.keepRunning()
 ```
 
-Then you need to copy `clock_config.py` to `clock_config_local.py` and do
+Then you need to copy `config.py` to `config_local.py` and do
 edits in the copy:
 - `wifi_ssid` - provide the name of your Wi-Fi network
 - `wifi_password` - provide the password to your Wi-Fi network

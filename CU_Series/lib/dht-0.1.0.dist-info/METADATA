@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: dht
+Version: 0.1.0
+Summary: DHT11 & DHT22 temperature/humidity sensor driver.
+Author: 
+License: MIT

@@ -74,7 +74,7 @@ class NoritakeCuFunctions(LcdApi):
         Writes a named character on the display at the cursor position.
 
         This allows writing special characters that can be used as
-        built-in icons (e.g. arrows, circles, etc.)
+        built-in icons (e.g., arrows, circles, etc.)
 
         :param name: The character name. Please refer to getNamedCharacter()
         to see what is available.
@@ -318,7 +318,7 @@ class NoritakeCuFunctions(LcdApi):
         Returns a hex code of the named character.
 
         Named characters are special ones that can be used to display
-        arrows, circles, icons-looking characters, etc.
+        arrows, circles, icon-looking characters, etc.
 
         :param name: The name of the character.
 
@@ -401,5 +401,5 @@ class NoritakeCuFunctions(LcdApi):
         if name in characters:
             return characters[name]
         else:
-            # If no character then return '?'
+            # If no character, then return '?'
             return 0x3f

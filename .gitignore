@@ -2,7 +2,10 @@
 .idea/
 
 # Local config file.
-CU_Series/demo/clock_config_local.py
+CU_Series/demo/config_local.py
 
 # Windows files.
 desktop.ini
+
+# Development directory.
+dev/

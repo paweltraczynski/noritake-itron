@@ -1,4 +1,4 @@
-# Copy this file to clock_config_local.py and do your changes there.
+# Copy this file to config_local.py and do your changes there.
 # Alternatively, you can apply your config changes directly in this file.
 
 wifi_ssid = 'ssid'

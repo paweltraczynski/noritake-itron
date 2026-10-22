@@ -73,6 +73,7 @@ class WeatherClock:
         self.displayed_time = None
         self.displayed_temperature = None
         self.displayed_humidity = None
+        self.displayed_wind = None
         self.displayed_conditions = None
         self.displayed_indoor_temperature = None
         self.displayed_indoor_humidity = None
@@ -117,8 +118,8 @@ class WeatherClock:
         self.wlan.active(True)
 
         # Indicate no Wi-Fi connection by settings the connection icon.
-        self.vfd.setCursor(0, 4)
-        self.vfd.write(self.vfd.getNamedCharacter('not_equal'))
+        self.vfd.setCursor(0, 3)
+        self.vfd.writeNamedChar('not_equal')
 
         # Initiate a Wi-Fi connection.
         try:
@@ -146,8 +147,8 @@ class WeatherClock:
             return False
 
         # At this point, the connection has been established.
-        self.vfd.setCursor(0, 4)
-        self.vfd.write(self.vfd.getNamedCharacter('graph'))
+        self.vfd.setCursor(0, 3)
+        self.vfd.writeNamedChar('graph')
 
         print('Established Wi-Fi connection.')
         return True
@@ -214,35 +215,35 @@ class WeatherClock:
                 hour = str(date['hour'])
                 minute = str(date['minute'])
 
-                self.digits.largeDigit(hour[0], 10)
-                self.digits.largeDigit(hour[1], 13)
-                self.digits.largeDigit(minute[0], 16)
-                self.digits.largeDigit(minute[1], 19)
-                self.vfd.setCursor(18, 4)
+                self.digits.largeDigit(hour[0], 9)
+                self.digits.largeDigit(hour[1], 12)
+                self.digits.largeDigit(minute[0], 15)
+                self.digits.largeDigit(minute[1], 18)
+                self.vfd.setCursor(17, 3)
                 self.vfd.write(":{0}".format(date['second']))
 
                 self.displayed_time = time_formatted
 
                 # Blinking colon between hours and minutes.
                 if date['timestamp'] % 2 == 0:
-                    self.digits.largeDigit('colon', 15)
+                    self.digits.largeDigit('colon', 14)
                 else:
-                    self.digits.largeDigit('erase_colon', 15)
+                    self.digits.largeDigit('erase_colon', 14)
 
         # If time is not set, then print dashes and static colon.
         else:
             if self.displayed_time != '-':
-                self.digits.largeDigit('dash', 10)
-                self.digits.largeDigit('dash', 13)
-                self.digits.largeDigit('dash', 16)
-                self.digits.largeDigit('dash', 19)
-                self.vfd.setCursor(18, 4)
+                self.digits.largeDigit('dash', 9)
+                self.digits.largeDigit('dash', 12)
+                self.digits.largeDigit('dash', 15)
+                self.digits.largeDigit('dash', 18)
+                self.vfd.setCursor(17, 3)
                 self.vfd.write(':--')
 
                 self.displayed_time = '-'
 
                 # Static colon when time is not known.
-                self.digits.largeDigit('colon', 15)
+                self.digits.largeDigit('colon', 14)
 
     def printWeather(self):
         current_ticks = time.ticks_ms()
@@ -260,6 +261,7 @@ class WeatherClock:
         if weather['success']:
             temperature = weather['temperature']
             humidity = weather['humidity']
+            wind = weather['wind']
             conditions = weather['conditions']
 
             # Temperature should always include 1 fraction digit
@@ -273,21 +275,33 @@ class WeatherClock:
                 humidity = 99
             humidity = '{:>2}'.format(humidity)
 
+            # Wind speed should always include 1 fraction digit
+            # occupying 4 characters because it can, for example, be '15.5'.
+            wind = '{:>4.1f}'.format(wind)
+
+
             # Print temperature.
             if self.displayed_temperature != temperature:
-                self.vfd.setCursor(3, 3)
+                self.vfd.setCursor(2, 2)
                 self.vfd.write(temperature)
                 self.displayed_temperature = temperature
 
             # Print humidity.
             if self.displayed_humidity != humidity:
-                self.vfd.setCursor(14, 4)
+                self.vfd.setCursor(13, 3)
                 self.vfd.write(humidity)
                 self.displayed_humidity = humidity
 
+            # Print wind speed.
+            if self.displayed_wind != wind:
+                # TODO: Set position.
+                self.vfd.setCursor(2, 4)
+                self.vfd.write(wind)
+                self.displayed_wind = wind
+
             # Print icon for indicating weather conditions.
             if self.displayed_conditions != conditions:
-                self.vfd.setCursor(3, 4)
+                self.vfd.setCursor(2, 3)
                 self.displayed_conditions = conditions
 
                 # Clouds.
@@ -295,7 +309,7 @@ class WeatherClock:
                     self.vfd.writeNamedChar('circle_fill')
                 # Rain.
                 elif conditions == 'Rain' or conditions == 'Thunderstorm':
-                    self.vfd.write(0xd9)
+                    self.vfd.writeData(0xd9)
                 # Snow.
                 elif conditions == 'Snow':
                     self.vfd.write('*')
@@ -306,17 +320,23 @@ class WeatherClock:
         # Clear weather when the fetching has failed.
         else:
             # Print temperature.
-            self.vfd.setCursor(3, 3)
+            self.vfd.setCursor(2, 2)
             self.vfd.write(' --.-')
             self.displayed_temperature = ' --.-'
 
             # Print humidity.
-            self.vfd.setCursor(14, 4)
+            self.vfd.setCursor(13, 3)
             self.vfd.write('--')
             self.displayed_humidity = '--'
 
+            # Print wind speed.
+            # TODO: Set position.
+            self.vfd.setCursor(2, 4)
+            self.vfd.write('--')
+            self.displayed_wind = '--.-'
+
             # Print icon for indicating weather conditions.
-            self.vfd.setCursor(3, 4)
+            self.vfd.setCursor(2, 3)
             self.vfd.write('-')
             self.displayed_conditions = '-'
 
@@ -355,9 +375,9 @@ class WeatherClock:
                 humidity = 99
             humidity = '{:>2}'.format(humidity)
 
-            self.vfd.setCursor(4, 1)
+            self.vfd.setCursor(3, 0)
             self.vfd.write(temperature)
-            self.vfd.setCursor(10, 4)
+            self.vfd.setCursor(9, 3)
             self.vfd.write(humidity)
 
     def screenInit(self):
@@ -373,29 +393,29 @@ class WeatherClock:
         # Temperatures placeholders.
         self.vfd.write('In --.-')
         self.vfd.writeNamedChar('deg_c')
-        self.vfd.setCursor(0, 2)
+        self.vfd.setCursor(0, 1)
         self.vfd.write('Out')
-        self.vfd.setCursor(4, 3)
+        self.vfd.setCursor(3, 2)
         self.vfd.write('--.-')
         self.vfd.writeNamedChar('deg_c')
 
         # Status icons initial.
-        self.vfd.setCursor(0, 4)
+        self.vfd.setCursor(0, 3)
         self.vfd.writeNamedChar('not_equal')
-        self.vfd.setCursor(3, 4)
+        self.vfd.setCursor(2, 3)
         self.vfd.write('-')
 
         # Humidity placeholder
-        self.vfd.setCursor(10, 4)
+        self.vfd.setCursor(9, 3)
         self.vfd.write('--% --%')
 
         # Clock placeholder.
-        self.digits.largeDigit('dash', 10)
-        self.digits.largeDigit('dash', 13)
-        self.digits.largeDigit('colon', 15)
-        self.digits.largeDigit('dash', 16)
-        self.digits.largeDigit('dash', 19)
-        self.vfd.setCursor(18, 4)
+        self.digits.largeDigit('dash', 9)
+        self.digits.largeDigit('dash', 12)
+        self.digits.largeDigit('colon', 14)
+        self.digits.largeDigit('dash', 15)
+        self.digits.largeDigit('dash', 18)
+        self.vfd.setCursor(17, 3)
         self.vfd.write(':--')
 
     def keepRunning(self):
@@ -404,6 +424,10 @@ class WeatherClock:
         """
         self.screenInit()
         self.connectWifi()
+
+        # Enable the LED at startup.
+        if self.led is not None:
+            self.led.value(1)
 
         while True:
             # Update displayed time (fetches new every 2 hours).
@@ -440,14 +464,14 @@ class WeatherClock:
             # Update download icon.
             if self.fetchers.data_fetched and not self.download_icon_shown:
                 # Show icon if not shown but flagged to start appearing.
-                self.vfd.setCursor(5, 4)
+                self.vfd.setCursor(4, 3)
                 self.vfd.writeNamedChar('arrow_right')
                 self.download_icon_shown = True
                 self.download_icon_time = ticks_ms
 
             elif self.download_icon_shown and time.ticks_diff(ticks_ms, self.download_icon_time) >= (1000 * 60):
                 # Hide icon if shown and 60 seconds have passed.
-                self.vfd.setCursor(5, 4)
+                self.vfd.setCursor(4, 3)
                 self.vfd.write(' ')
                 self.download_icon_shown = False
                 self.fetchers.data_fetched = False
@@ -513,4 +537,3 @@ class WeatherClock:
 
             # Wait.
             time.sleep(0.1)
-

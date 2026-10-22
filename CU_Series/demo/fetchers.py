@@ -48,6 +48,7 @@ class Fetchers:
         self.weather = {
             'temperature': 0,
             'humidity': 0,
+            'wind': 0,
             'conditions': '',
             'success': False,
         }
@@ -244,6 +245,7 @@ class Fetchers:
 
         temperature = 0
         humidity = 0
+        wind = 0
         conditions = ''
         success = False
 
@@ -300,6 +302,7 @@ class Fetchers:
             if weather and isinstance(weather, dict):
                 temperature = round(weather['main']['temp'], 1)
                 humidity = round(weather['main']['humidity'])
+                wind = round(weather['wind']['speed'], 1)
                 conditions = weather['weather'][0]['main']
                 success = True
 
@@ -321,6 +324,7 @@ class Fetchers:
         self.weather = {
             'temperature': temperature,
             'humidity': humidity,
+            'wind': wind,
             'conditions': conditions,
             'success': success,
         }

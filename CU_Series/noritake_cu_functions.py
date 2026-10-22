@@ -79,7 +79,7 @@ class NoritakeCuFunctions(LcdApi):
         :param name: The character name. Please refer to getNamedCharacter()
         to see what is available.
         """
-        self.writeData(self.getNamedCharacter(name))
+        self.writeData([self.getNamedCharacter(name)])
 
     # .-----------------------------------------------------.
     # |                 NAVIGATION COMMANDS                 |

@@ -344,6 +344,7 @@ class NoritakeCuFunctions(LcdApi):
             'triangle_left': 0x1e,
             'triangle_up': 0x1f,
             # 20-2f - Standard special characters.
+            'snowflake': 0x2a,
             # 30-3f - Digits and standard special characters.
             # 40-4f - @ and uppercase letters.
             # 50-5f - Uppercase letters and standard special characters.
@@ -381,6 +382,8 @@ class NoritakeCuFunctions(LcdApi):
             # c0-cf.
             # d0-df.
             'triple_line': 0xd0,
+            'storm': 0xd2,
+            'rain': 0xd9,
             'box_closed': 0xdb,
             'box_open2': 0xdc,
             'slide': 0xdd,

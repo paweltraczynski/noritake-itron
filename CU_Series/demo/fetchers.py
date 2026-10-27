@@ -28,6 +28,7 @@ class Fetchers:
         # Stores the last date synchronization time in ms.
         self.date_last_fetch =  None
         self.date_last_attempt = None
+        self.date_last_failed = False
         # 2-hour interval converted to milliseconds.
         # This low interval is needed for daylight savings time changes.
         self.date_fetch_interval = 2 * 60 * 60 * 1000
@@ -159,6 +160,7 @@ class Fetchers:
 
                 # Save the timestamp of the successful synchronization.
                 self.date_last_fetch = time.ticks_ms()
+                self.date_last_failed = False
 
                 # Set a flag that will allow checking if any data
                 # was recently fetched from the Internet.
@@ -169,11 +171,13 @@ class Fetchers:
                 return True
 
             else:
+                self.date_last_failed = True
                 response.close()
                 print('Failed to synchronize date and time.')
                 return False
 
         except Exception as e:
+            self.date_last_failed = True
             if hasattr(response, 'close'):
                 response.close()
             print('Date and time synchronization error:', e)

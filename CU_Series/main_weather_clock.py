@@ -16,10 +16,8 @@ from demo.weather_clock import WeatherClock
 time.sleep(1)
 
 # Set GPIO pins.
-tx_pin = 0
-rx_pin = 1
+dht_pin = 3
 button_pin = 2
-dht_sensor_pin = 3
 led_pin = 5
 
 # Adjust the number of lines and columns that your display has.
@@ -30,17 +28,17 @@ cols = 20
 vfd = NoritakeCuGPIO(
     rs_pin = Pin(0),
     enable_pin = Pin(1),
-    d4_pin = Pin(2),
-    d5_pin = Pin(3),
-    d6_pin = Pin(4),
-    d7_pin = Pin(5),
+    d4_pin = Pin(6),
+    d5_pin = Pin(7),
+    d6_pin = Pin(8),
+    d7_pin = Pin(9),
     num_lines = lines,
     num_columns = cols
 )
 
 # Weather and clock project that displays weather and time.
 #weather_clock = WeatherClock(vfd, lines = lines, cols = cols, dht_pin = dht_sensor_pin, button_pin = button_pin)
-weather_clock = WeatherClock(vfd, lines = lines, cols = cols, dht_pin = None, button_pin = None, led_pin = None)
+weather_clock = WeatherClock(vfd, lines = lines, cols = cols, dht_pin = 10, button_pin = 12, led_pin = 11)
 
 # Start the main loop.
 weather_clock.keepRunning()

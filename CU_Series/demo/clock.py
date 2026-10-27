@@ -5,7 +5,7 @@ from machine import RTC
 
 # Dots on the start are required for RPi Pico/MicroPython boards.
 from .fetchers import Fetchers
-from .large_digits_2_rows import LargeDigits
+from .large_digits_2_rows import LargeDigits2Rows
 from .matrix_rain import MatrixRain
 
 # Import config_local.py if user has created it.
@@ -30,7 +30,7 @@ class ClockTemp:
         self.fetchers = Fetchers()
 
         # Large digits.
-        self.digits = LargeDigits(self.vfd)
+        self.digits = LargeDigits2Rows(self.vfd)
 
         # Wi-Fi.
         self.wlan = network.WLAN(network.STA_IF)

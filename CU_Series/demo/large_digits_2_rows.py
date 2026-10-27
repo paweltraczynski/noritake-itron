@@ -1,4 +1,4 @@
-class LargeDigits:
+class LargeDigits2Rows:
     """
     A class containing big clock characters that occupy 2 rows:
     - large digits (0-9)

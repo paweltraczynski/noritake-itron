@@ -1,4 +1,4 @@
-class LargeDigits:
+class LargeDigits3Rows:
     """
     A class containing big clock characters that occupy 3 rows:
     - large digits (0-9)
@@ -36,7 +36,7 @@ class LargeDigits:
         Prints a selected large digit at a specified position on the display.
         
         Requires 4 lines display, because the digits take 3 lines.
-        It's best to print them at row 1, but row 2 will also work.
+        It's best to print them at row 0, but row 1 will also work.
 
         :param digit: The digit to print, pass 0-9 or colon/dash/erase/erase/erase_colon.
         :param column: The column to print the digit at.

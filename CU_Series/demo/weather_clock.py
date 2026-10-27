@@ -5,7 +5,8 @@ import dht
 
 # Dots on the start are required for RPi Pico/MicroPython boards.
 from .fetchers import Fetchers
-from .large_digits_3_rows import LargeDigits
+from .large_digits_3_rows import LargeDigits3Rows
+from .large_digits_2_rows import LargeDigits2Rows
 
 # Import config_local.py if user has created it.
 try:
@@ -40,8 +41,10 @@ class WeatherClock:
         # Data fetchers, for fetching weather and time from the Internet.
         self.fetchers = Fetchers()
 
-        # Large digits.
-        self.digits = LargeDigits(self.vfd)
+        # Large digits 3 rows, used by layout 1.
+        self.digits3 = LargeDigits3Rows(self.vfd)
+        # Large digits 2 rows, used by layout 2.
+        self.digits2 = LargeDigits2Rows(self.vfd)
 
         # DHT22 sensor.
         if dht_pin is not None:
@@ -58,6 +61,7 @@ class WeatherClock:
         # LED.
         if led_pin is not None:
             self.led = Pin(led_pin, Pin.OUT)
+            self.led.value(1)
         else:
             self.led = None
 
@@ -77,6 +81,9 @@ class WeatherClock:
         self.displayed_conditions = None
         self.displayed_indoor_temperature = None
         self.displayed_indoor_humidity = None
+        self.displayed_wifi = None
+        self.displayed_download = None
+        self.displayed_fail = None
 
         # Track the last time when values were displayed.
         # This is used to prevent calling print methods more
@@ -90,8 +97,8 @@ class WeatherClock:
         self.brightness_status = 'on'
         # Last user set brightness.
         self.brightness_set = 4
-        # Brightness changing button last pressed time.
-        self.brightness_button = None
+        # Button last pressed time.
+        self.button_press_time = None
         # Night wake timer used when turning the display on for a moment
         # during the night.
         self.night_wake_started = None
@@ -99,6 +106,13 @@ class WeatherClock:
         # Track download icon.
         self.download_icon_shown = False
         self.download_icon_time = 0
+
+        # There are two different layouts used to show the date.
+        self.layout = 2
+
+    # .-----------------------------------------------------.
+    # |                  GENERAL FUNCTIONS                  |
+    # '-----------------------------------------------------'
 
     def connectWifi(self):
         """
@@ -116,10 +130,6 @@ class WeatherClock:
 
         self.wifi_last_attempt = current_ticks
         self.wlan.active(True)
-
-        # Indicate no Wi-Fi connection by settings the connection icon.
-        self.vfd.setCursor(0, 3)
-        self.vfd.writeNamedChar('not_equal')
 
         # Initiate a Wi-Fi connection.
         try:
@@ -146,10 +156,6 @@ class WeatherClock:
             print('Wi-Fi unavailable; retrying...')
             return False
 
-        # At this point, the connection has been established.
-        self.vfd.setCursor(0, 3)
-        self.vfd.writeNamedChar('graph')
-
         print('Established Wi-Fi connection.')
         return True
 
@@ -171,7 +177,127 @@ class WeatherClock:
 
         return hour >= start or hour < end
 
-    def changeBrightness(self):
+    def getWeatherConditionDetails(self, conditions):
+        """
+        Returns the name and icon for a provided weather condition.
+
+        :param conditions: Named weather condition.
+
+        :return: A dictionary with the name and icon of the weather condition.
+        """
+        sets = {
+            'Clouds': {
+                'name': 'Cloud',
+                'icon': 'circle_fill',
+            },
+            'Rain': {
+                'name': 'Rain',
+                'icon': 'rain',
+            },
+            'Thunderstorm': {
+                'name': 'Storm',
+                'icon': 'storm',
+            },
+            'Snow': {
+                'name': 'Snow',
+                'icon': 'snowflake',
+            },
+            'Sunny': {
+                'name': 'Clear',
+                'icon': 'circle_stroke',
+            }
+        }
+
+        if conditions in sets:
+            return sets[conditions]
+        else:
+            return sets['Sunny']
+    
+    def getDimOff(self):
+        """
+        Returns information if dim hours and off hours are active.
+
+        :return: The information about dim hours and off hours.
+        """
+        date = self.fetchers.getDateTime()
+
+        # Prepare the result.
+        result = {
+            'dim_hours': False,
+            'off_hours': False,
+        }
+
+        # Calculate if dim hours or off hours are active.
+        if date['year'] != 0:
+            result['dim_hours'] = self.checkHourInRange(
+                date['hour_int'],
+                config.display_dim_start_hour,
+                config.display_dim_end_hour
+            )
+
+            result['off_hours'] = self.checkHourInRange(
+                date['hour_int'],
+                config.display_off_start_hour,
+                config.display_off_end_hour
+            )
+
+        return result
+
+    def getNightWake(self):
+        """
+        Calculates if the night wake is active.
+
+        :return bool: True if the night wake is active, False otherwise.
+        """
+        return (
+            self.night_wake_started is not None
+            and time.ticks_diff(time.ticks_ms(), self.night_wake_started) < 10_000
+        )
+
+    def setNightDayBrightness(self, dim_hours, off_hours, night_wake):
+        """
+        Sets the brightness based on the dim/off and night wake status.
+
+        :param dim_hours: True if dim hours are active, False otherwise.
+        :param off_hours: True if off hours are active, False otherwise.
+        :param night_wake: True if a night wake is active, False otherwise.
+        """
+        if off_hours:
+            if night_wake:
+                if self.brightness_status != 'night_wake':
+                    self.vfd.displayOnOff(1)
+                    self.vfd.setBrightness(1)
+                    self.brightness_status = 'night_wake'
+                    if self.led is not None:
+                        self.led.value(1)
+            elif self.brightness_status != 'off':
+                self.vfd.displayOnOff(0)
+                self.brightness_status = 'off'
+                if self.led is not None:
+                        self.led.value(0)
+
+        # Dim hours.
+        elif dim_hours:
+            if self.brightness_status != 'dim':
+                self.vfd.displayOnOff(1)
+                self.vfd.setBrightness(1)
+                self.brightness_status = 'dim'
+                if self.led is not None:
+                    self.led.value(1)
+
+        # On hours.
+        elif self.brightness_status != 'on':
+            self.vfd.displayOnOff(1)
+            self.vfd.setBrightness(self.brightness_set)
+            self.brightness_status = 'on'
+            if self.led is not None:
+                self.led.value(1)
+
+    # .-----------------------------------------------------.
+    # |                  BUTTON FUNCTIONS                   |
+    # '-----------------------------------------------------'
+
+    def buttonChangeBrightness(self):
         """
         Continuously changes the brightness by 1 brightness level.
         """
@@ -186,6 +312,89 @@ class WeatherClock:
 
         if self.brightness_status == 'on':
             self.vfd.setBrightness(brightness)
+
+    def buttonChangeLayout(self):
+        """
+        Changes the display layout used to show all the details.
+        """
+        # Force all elements to redraw in their new positions.
+        self.displayed_time = None
+        self.displayed_temperature = None
+        self.displayed_humidity = None
+        self.displayed_wind = None
+        self.displayed_conditions = None
+        self.displayed_indoor_temperature = None
+        self.displayed_indoor_humidity = None
+        self.displayed_wifi = None
+        self.displayed_download = None
+        self.displayed_fail = None
+
+        self.last_time = None
+        self.last_weather = None
+        self.last_indoor = None
+
+        self.download_icon_shown = False
+
+        if self.layout == 1:
+            self.layout = 2
+            self.initScreenLayout2()
+        else:
+            self.layout = 1
+            self.initScreenLayout1()
+
+    def buttonDetectPress(self, dim_hours, off_hours):
+        """
+        Detects a button press and changes the brightness, layout, or wakes.
+
+        Short press changes brightness during daytime and wakes the
+        display during off hours.
+
+        Long press changes the layout during daytime, dim hours,
+        or an active night wake.
+
+        :param dim_hours: Whether dim hours are active.
+        :param off_hours: Whether off hours are active.
+        """
+        if self.button is None:
+            return
+
+        ticks_ms = time.ticks_ms()
+
+        # Record when the button is first pressed.
+        # Actions are triggered only after the button is released.
+        if self.button.value() == 0:
+            if self.button_press_time is None:
+                self.button_press_time = ticks_ms
+
+        # React to button release.
+        elif self.button_press_time is not None:
+            held_ms = time.ticks_diff(ticks_ms, self.button_press_time)
+
+            # Reset the press time on every release, including brief presses.
+            self.button_press_time = None
+
+            # Ignore presses shorter than 100 milliseconds.
+            if held_ms < 100:
+                return
+
+             # Long press changes the layout only while the display is lit.
+            if held_ms >= 1500:
+                if not off_hours or self.getNightWake():
+                    self.buttonChangeLayout()
+
+            # Short press wakes the display or changes daytime brightness.
+            else:
+                # Wake the display or restart the active night wake timer.
+                if off_hours:
+                    self.night_wake_started = ticks_ms
+
+                # Change brightness only outside dim hours and off hours.
+                elif not dim_hours:
+                    self.buttonChangeBrightness()
+
+    # .-----------------------------------------------------.
+    # |                 PRINTING FUNCTIONS                  |
+    # '-----------------------------------------------------'
 
     def printDateTime(self):
         """
@@ -202,50 +411,118 @@ class WeatherClock:
         # Get date and time.
         date = self.fetchers.getDateTime()
 
+        # Print the date and time for the current layout.
+        if self.layout == 1:
+            self.printDateTimeLayout1(date)
+        else:
+            self.printDateTimeLayout2(date)
+
+    def printDateTimeLayout1(self, date):
+        """
+        Prints the date and time in layout 1.
+
+        :param date: The date and time to print.
+        """
         # Print the time if it is set.
         if date['year'] != 0:
+            hour = date['hour']
+            minute = date['minute']
+            second = date['second']
+            timestamp = date['timestamp']
+
             time_formatted = '{hour}:{minute}:{second}'.format(
-                hour = date['hour'],
-                minute = date['minute'],
-                second = date['second']
+                hour = hour,
+                minute = minute,
+                second = second
             )
 
             # Do so only if it has changed since the last print.
             if self.displayed_time != time_formatted:
-                hour = str(date['hour'])
-                minute = str(date['minute'])
-
-                self.digits.largeDigit(hour[0], 9)
-                self.digits.largeDigit(hour[1], 12)
-                self.digits.largeDigit(minute[0], 15)
-                self.digits.largeDigit(minute[1], 18)
+                self.digits3.largeDigit(hour[0], 9)
+                self.digits3.largeDigit(hour[1], 12)
+                self.digits3.largeDigit(minute[0], 15)
+                self.digits3.largeDigit(minute[1], 18)
                 self.vfd.setCursor(17, 3)
-                self.vfd.write(":{0}".format(date['second']))
+                self.vfd.write(":{0}".format(second))
 
                 self.displayed_time = time_formatted
 
                 # Blinking colon between hours and minutes.
-                if date['timestamp'] % 2 == 0:
-                    self.digits.largeDigit('colon', 14)
+                if timestamp % 2 == 0:
+                    self.digits3.largeDigit('colon', 14)
                 else:
-                    self.digits.largeDigit('erase_colon', 14)
+                    self.digits3.largeDigit('erase_colon', 14)
 
         # If time is not set, then print dashes and static colon.
         else:
             if self.displayed_time != '-':
-                self.digits.largeDigit('dash', 9)
-                self.digits.largeDigit('dash', 12)
-                self.digits.largeDigit('dash', 15)
-                self.digits.largeDigit('dash', 18)
+                self.digits3.largeDigit('dash', 9)
+                self.digits3.largeDigit('dash', 12)
+                self.digits3.largeDigit('dash', 15)
+                self.digits3.largeDigit('dash', 18)
                 self.vfd.setCursor(17, 3)
                 self.vfd.write(':--')
 
                 self.displayed_time = '-'
 
                 # Static colon when time is not known.
-                self.digits.largeDigit('colon', 14)
+                self.digits3.largeDigit('colon', 14)
+
+    def printDateTimeLayout2(self, date):
+        """
+        Prints the date and time in layout 2.
+
+        :param date: The date and time to print.
+        """
+        # Print the time if it is set.
+        if date['year'] != 0:
+            hour = date['hour']
+            minute = date['minute']
+            second = date['second']
+            timestamp = date['timestamp']
+
+            time_formatted = '{hour}:{minute}:{second}'.format(
+                hour = hour,
+                minute = minute,
+                second = second
+            )
+
+            # Do so only if it has changed since the last print.
+            if self.displayed_time != time_formatted:
+                self.digits2.largeDigit(hour[0], 7)
+                self.digits2.largeDigit(hour[1], 10)
+                self.digits2.largeDigit(minute[0], 14)
+                self.digits2.largeDigit(minute[1], 17)
+                self.vfd.setCursor(3, 3)
+                self.vfd.write(":{0}".format(second))
+
+                self.displayed_time = time_formatted
+
+                # Blinking colon between hours and minutes.
+                if timestamp % 2 == 0:
+                    self.digits2.largeDigit('colon', 13)
+                else:
+                    self.digits2.largeDigit('erase_colon', 13)
+
+        # If time is not set, then print dashes and static colon.
+        else:
+            if self.displayed_time != '-':
+                self.digits2.largeDigit('dash', 7)
+                self.digits2.largeDigit('dash', 10)
+                self.digits2.largeDigit('dash', 14)
+                self.digits2.largeDigit('dash', 17)
+                self.vfd.setCursor(3, 3)
+                self.vfd.write(':--')
+
+                self.displayed_time = '-'
+
+                # Static colon when time is not known.
+                self.digits2.largeDigit('colon', 13)
 
     def printWeather(self):
+        """
+        Prints the current weather on the display.
+        """
         current_ticks = time.ticks_ms()
 
         # Don't print weather more often than 30 seconds.
@@ -257,88 +534,74 @@ class WeatherClock:
         # Get weather data.
         weather = self.fetchers.getWeather()
 
-        # Print weather if it was fetched.
+        # Prepare weather data to print.
         if weather['success']:
-            temperature = weather['temperature']
-            humidity = weather['humidity']
-            wind = weather['wind']
-            conditions = weather['conditions']
-
-            # Temperature should always include 1 fraction digit
-            # occupying 5 characters because it can, for example, be '-15.5'.
-            temperature = '{:>5.1f}'.format(temperature)
+            # Temperature should always include 1 fraction digit and occupy
+            # 5 characters because it can, for example, be '-15.5'.
+            temperature = '{:>5.1f}'.format(weather['temperature'])
 
             # Humidity should be rounded and always in range of 0-99,
             # and also always 2 characters. It should never be more
             # than 99% because of available space.
-            if humidity > 99:
-                humidity = 99
-            humidity = '{:>2}'.format(humidity)
+            humidity = '{:>2.0f}'.format(
+                min(99, max(0, weather['humidity']))
+            )
 
-            # Wind speed should always include 1 fraction digit
-            # occupying 4 characters because it can, for example, be '15.5'.
-            wind = '{:>4.1f}'.format(wind)
+            # Wind speed should always include 1 fraction digit and occupy
+            # 4 characters because it can, for example, be '15.5'.
+            wind = '{:>4.1f}'.format(weather['wind'])
 
-
-            # Print temperature.
-            if self.displayed_temperature != temperature:
-                self.vfd.setCursor(2, 2)
-                self.vfd.write(temperature)
-                self.displayed_temperature = temperature
-
-            # Print humidity.
-            if self.displayed_humidity != humidity:
-                self.vfd.setCursor(13, 3)
-                self.vfd.write(humidity)
-                self.displayed_humidity = humidity
-
-            # Print wind speed.
-            if self.displayed_wind != wind:
-                # TODO: Set position.
-                self.vfd.setCursor(2, 4)
-                self.vfd.write(wind)
-                self.displayed_wind = wind
-
-            # Print icon for indicating weather conditions.
-            if self.displayed_conditions != conditions:
-                self.vfd.setCursor(2, 3)
-                self.displayed_conditions = conditions
-
-                # Clouds.
-                if conditions == 'Clouds':
-                    self.vfd.writeNamedChar('circle_fill')
-                # Rain.
-                elif conditions == 'Rain' or conditions == 'Thunderstorm':
-                    self.vfd.writeData(0xd9)
-                # Snow.
-                elif conditions == 'Snow':
-                    self.vfd.write('*')
-                # Sunny.
-                else:
-                    self.vfd.writeNamedChar('circle_stroke')
-
-        # Clear weather when the fetching has failed.
+            conditions = weather['conditions']
         else:
-            # Print temperature.
-            self.vfd.setCursor(2, 2)
-            self.vfd.write(' --.-')
-            self.displayed_temperature = ' --.-'
+            temperature = ' --.-'
+            humidity = '--'
+            wind = '--.-'
+            conditions = None
 
-            # Print humidity.
-            self.vfd.setCursor(13, 3)
-            self.vfd.write('--')
-            self.displayed_humidity = '--'
+        # Choose positions for the active layout.
+        if self.layout == 1:
+            temperature_pos = (2, 1)
+            humidity_pos = (13, 3)
+            wind_pos = (3, 2)
+            conditions_pos = (2, 3)
+        else:
+            temperature_pos = (1, 1)
+            humidity_pos = (11, 3)
+            wind_pos = (2, 2)
+            conditions_pos = (15, 3)
 
-            # Print wind speed.
-            # TODO: Set position.
-            self.vfd.setCursor(2, 4)
-            self.vfd.write('--')
-            self.displayed_wind = '--.-'
+        # Print weather data.
+        if self.displayed_temperature != temperature:
+            self.vfd.setCursor(*temperature_pos)
+            self.vfd.write(temperature)
+            self.displayed_temperature = temperature
 
-            # Print icon for indicating weather conditions.
-            self.vfd.setCursor(2, 3)
-            self.vfd.write('-')
-            self.displayed_conditions = '-'
+        if self.displayed_humidity != humidity:
+            self.vfd.setCursor(*humidity_pos)
+            self.vfd.write(humidity)
+            self.displayed_humidity = humidity
+
+        if self.displayed_wind != wind:
+            self.vfd.setCursor(*wind_pos)
+            self.vfd.write(wind)
+            self.displayed_wind = wind
+
+        if self.displayed_conditions != conditions:
+            self.vfd.setCursor(*conditions_pos)
+
+            if conditions is not None:
+                cond = self.getWeatherConditionDetails(conditions)
+                if self.layout == 1:
+                    self.vfd.writeNamedChar(cond['icon'])
+                else:
+                    self.vfd.write('{:>5}'.format(cond['name']))
+            else:
+                if self.layout == 1:
+                    self.vfd.write('-')
+                else:
+                    self.vfd.write('   --')
+
+            self.displayed_conditions = conditions
 
     def printIndoorTemp(self):
         """
@@ -354,80 +617,218 @@ class WeatherClock:
 
         self.last_indoor = current_ticks
 
+        temperature = '--.-'
+        humidity = '--'
+
         if self.sensor:
             try:
                 self.sensor.measure()
-                temperature = round(self.sensor.temperature(), 1)
-                humidity = round(self.sensor.humidity())
 
-            # If the DHT22 sensor cannot be read, then return.
-            # Most probably the sensor is not connected.
+                # Temperature should always include 1 fraction digit and occupy
+                # 5 characters because it can, for example, be '-15.5'.
+                temperature = '{:>5.1f}'.format(self.sensor.temperature())
+
+                # Humidity should be rounded and always in range of 0-99,
+                # and also always 2 characters. It should never be more
+                # than 99% because of available space.
+                humidity = '{:>2.0f}'.format(
+                    min(99, max(0, self.sensor.humidity()))
+                )
+
+            # If the DHT22 sensor cannot be read, then displayed values will
+            # be reset. If so, most probably the sensor is not connected.
             except Exception as e:
                 print(f"Error reading DHT22 sensor data: {e}")
-                return
 
-            # Indoor temperature should always include 1 fraction digit
-            # occupying 4 characters because it can, for example, be '23.5'.
-            temperature = '{:>4.1f}'.format(temperature)
+        # Choose positions for the active layout.
+        if self.layout == 1:
+            temperature_pos = (2, 0)
+            humidity_pos = (9, 3)
+        else:
+            temperature_pos = (1, 0)
+            humidity_pos = (7, 3)
 
-            # Humidity should never be more than 99% because of available space.
-            if humidity > 99:
-                humidity = 99
-            humidity = '{:>2}'.format(humidity)
-
-            self.vfd.setCursor(3, 0)
+        if self.displayed_indoor_temperature != temperature:
+            self.vfd.setCursor(*temperature_pos)
             self.vfd.write(temperature)
-            self.vfd.setCursor(9, 3)
-            self.vfd.write(humidity)
+            self.displayed_indoor_temperature = temperature
 
-    def screenInit(self):
+        if self.displayed_indoor_humidity != humidity:
+            self.vfd.setCursor(*humidity_pos)
+            self.vfd.write(humidity)
+            self.displayed_indoor_humidity = humidity
+
+    def printDownloadIcon(self):
         """
-        Initializes the display, large digits and prints data placeholders.
+        Prints a download icon for a moment after successful data fetching.
+
+        This icon appears each time after new data is fetched. It is used to indicate that Internet data fetching is working.
+
+        This function also takes care of printing another icon if the last
+        date and time data fetching failed.
+        """
+        ticks_ms = time.ticks_ms()
+
+        # Choose position for the active layout.
+        if self.layout == 1:
+            pos = (4, 3)
+        else:
+            pos = (2, 3)
+
+        # Show the fail icon if the last date and time fetching failed.
+        if self.fetchers.date_last_failed and self.displayed_fail != 1:
+            self.vfd.setCursor(*pos)
+            self.vfd.write('X')
+            self.displayed_fail = 1
+
+        # Clear the fail icon (only in layout 1).
+        elif not self.fetchers.date_last_failed and self.displayed_fail != 0:
+            self.vfd.setCursor(*pos)
+            self.vfd.write(' ')
+            self.displayed_fail = 0
+
+        # Show the download icon after successful data fetch.
+        if self.fetchers.data_fetched and not self.download_icon_shown and self.displayed_fail == 0:
+                self.vfd.setCursor(*pos)
+                self.vfd.writeNamedChar('arrow_right')
+                self.download_icon_shown = True
+                self.download_icon_time = ticks_ms
+
+        # Hide the download icon if shown and 60 seconds have passed.
+        elif self.download_icon_shown and time.ticks_diff(ticks_ms, self.download_icon_time) >= (1000 * 60):
+            # For layout 2 do this only if there is no fail icon.
+            if self.layout == 1 or (self.layout == 2 and self.displayed_fail == 0):
+                self.vfd.setCursor(*pos)
+                self.vfd.write(' ')
+                self.download_icon_shown = False
+                self.fetchers.data_fetched = False
+
+    def printWifiIcon(self):
+        # Choose position for the active layout.
+        if self.layout == 1:
+            position = (0, 3)
+        else:
+            position = (0, 3)
+
+        # Print the Wi-Fi icon.
+        self.vfd.setCursor(*position)
+
+        if self.wlan.isconnected() and self.displayed_wifi != 1:
+            self.vfd.writeNamedChar('graph')
+            self.displayed_wifi = 1
+
+        if not self.wlan.isconnected() and self.displayed_wifi != 0:
+            self.vfd.writeNamedChar('not_equal')
+            self.displayed_wifi = 0
+
+    # .-----------------------------------------------------.
+    # |                    LAYOUT INITS                     |
+    # '-----------------------------------------------------'
+
+    def initScreenLayout1(self):
+        """
+        Initializes the display for layout 1 and prints data placeholders.
         """
         # Initialize the display.
         self.vfd.clearDisplay()
 
         # Initialize the large digits.
-        self.digits.largeDigitsInit()
+        self.digits3.largeDigitsInit()
 
         # Temperatures placeholders.
+        self.vfd.setCursor(0, 0)
         self.vfd.write('In --.-')
         self.vfd.writeNamedChar('deg_c')
+
         self.vfd.setCursor(0, 1)
-        self.vfd.write('Out')
-        self.vfd.setCursor(3, 2)
-        self.vfd.write('--.-')
+        self.vfd.write('Ou --.-')
         self.vfd.writeNamedChar('deg_c')
 
-        # Status icons initial.
-        self.vfd.setCursor(0, 3)
-        self.vfd.writeNamedChar('not_equal')
-        self.vfd.setCursor(2, 3)
-        self.vfd.write('-')
+        # Wind placeholder.
+        self.vfd.setCursor(0, 2)
+        self.vfd.write('Wi --.-m')
 
         # Humidity placeholder
         self.vfd.setCursor(9, 3)
         self.vfd.write('--% --%')
 
+        # Status icons initial.
+        self.vfd.setCursor(0, 3)
+        self.vfd.writeNamedChar('not_equal')
+
+        self.vfd.setCursor(2, 3)
+        self.vfd.write('-')
+
         # Clock placeholder.
-        self.digits.largeDigit('dash', 9)
-        self.digits.largeDigit('dash', 12)
-        self.digits.largeDigit('colon', 14)
-        self.digits.largeDigit('dash', 15)
-        self.digits.largeDigit('dash', 18)
+        self.digits3.largeDigit('dash', 9)
+        self.digits3.largeDigit('dash', 12)
+        self.digits3.largeDigit('colon', 14)
+        self.digits3.largeDigit('dash', 15)
+        self.digits3.largeDigit('dash', 18)
         self.vfd.setCursor(17, 3)
         self.vfd.write(':--')
+
+    def initScreenLayout2(self):
+        """
+        Initializes the display for layout 2 and prints data placeholders.
+        """
+        # Initialize the display.
+        self.vfd.clearDisplay()
+
+        # Initialize the large digits.
+        self.digits2.largeDigitsInit()
+
+        # Temperatures placeholders.
+        self.vfd.setCursor(0, 0)
+        self.vfd.write('i --.-')
+
+        self.vfd.setCursor(0, 1)
+        self.vfd.write('o --.-')
+
+        # Wind placeholder.
+        self.vfd.setCursor(0, 2)
+        self.vfd.write('w --.-')
+
+        # Humidity placeholder
+        self.vfd.setCursor(7, 3)
+        self.vfd.write('--% --%')
+
+        # Conditions.
+        self.vfd.setCursor(15, 3)
+        self.vfd.write('   --')
+
+        # Status icons initial.
+        self.vfd.setCursor(0, 3)
+        self.vfd.writeNamedChar('not_equal')
+
+        # Clock placeholder.
+        self.digits2.largeDigit('dash', 7)
+        self.digits2.largeDigit('dash', 10)
+        self.digits2.largeDigit('colon', 13)
+        self.digits2.largeDigit('dash', 14)
+        self.digits2.largeDigit('dash', 17)
+        self.vfd.setCursor(3, 3)
+        self.vfd.write(':--')
+
+    # .-----------------------------------------------------.
+    # |                      MAIN LOOP                      |
+    # '-----------------------------------------------------'
 
     def keepRunning(self):
         """
         The main loop that keeps the info display running.
         """
-        self.screenInit()
+        # Initialize the first screen layout.
+        if self.layout == 1:
+            self.initScreenLayout1()
+        else:
+            self.initScreenLayout2()
+
+        # Connect to Wi-Fi.
         self.connectWifi()
 
-        # Enable the LED at startup.
-        if self.led is not None:
-            self.led.value(1)
+        # If Wi-Fi has connected, show W-Fi connection icon.
+        self.printWifiIcon()
 
         while True:
             # Update displayed time (fetches new every 2 hours).
@@ -439,101 +840,34 @@ class WeatherClock:
             # Update indoor temperature and humidity.
             self.printIndoorTemp()
 
-            # Detect dim and off hours.
-            date = self.fetchers.getDateTime()
-
-            off_hours = False
-            dim_hours = False
-
-            if date['year'] != 0:
-                off_hours = self.checkHourInRange(
-                    date['hour_int'],
-                    config.display_off_start_hour,
-                    config.display_off_end_hour
-                )
-
-                dim_hours = self.checkHourInRange(
-                    date['hour_int'],
-                    config.display_dim_start_hour,
-                    config.display_dim_end_hour
-                )
-
-            # Ticks after potential fetching of data from the Internet.
-            ticks_ms = time.ticks_ms()
-
             # Update download icon.
-            if self.fetchers.data_fetched and not self.download_icon_shown:
-                # Show icon if not shown but flagged to start appearing.
-                self.vfd.setCursor(4, 3)
-                self.vfd.writeNamedChar('arrow_right')
-                self.download_icon_shown = True
-                self.download_icon_time = ticks_ms
+            self.printDownloadIcon()
 
-            elif self.download_icon_shown and time.ticks_diff(ticks_ms, self.download_icon_time) >= (1000 * 60):
-                # Hide icon if shown and 60 seconds have passed.
-                self.vfd.setCursor(4, 3)
-                self.vfd.write(' ')
-                self.download_icon_shown = False
-                self.fetchers.data_fetched = False
+            # Check if dim hours and off hours are active.
+            dim_off = self.getDimOff()
+            off_hours = dim_off['off_hours']
+            dim_hours = dim_off['dim_hours']
 
-            # Handle brightness button.
-            if self.button is not None:
-                if self.button.value() == 0:
-                    if self.brightness_button is None:
-                        self.brightness_button = ticks_ms
+            # Detect button press.
+            self.buttonDetectPress(dim_hours, off_hours)
 
-                        # Button triggers night wake at night.
-                        if off_hours:
-                            self.night_wake_started = ticks_ms
-                else:
-                    if self.brightness_button is not None:
-                        if time.ticks_diff(ticks_ms, self.brightness_button) >= 100:
-                            if not off_hours and not dim_hours:
-                                self.changeBrightness()
-                            self.brightness_button = None
-
-            # Calculate if the night wake is active.
-            night_wake_active = (
-                self.night_wake_started is not None
-                and time.ticks_diff(ticks_ms, self.night_wake_started) < 10_000
-            )
+            # Get current night wake status.
+            # This needs to happen after the button press detection.
+            night_wake = self.getNightWake()
 
             # Update night/day brightness.
-            # Off hours.
-            if off_hours:
-                if night_wake_active:
-                    if self.brightness_status != 'night_wake':
-                        self.vfd.displayOnOff(1)
-                        self.vfd.setBrightness(1)
-                        self.brightness_status = 'night_wake'
-                        if self.led is not None:
-                            self.led.value(1)
-                elif self.brightness_status != 'off':
-                    self.vfd.displayOnOff(0)
-                    self.brightness_status = 'off'
-                    if self.led is not None:
-                            self.led.value(0)
-
-            # Dim hours.
-            elif dim_hours:
-                if self.brightness_status != 'dim':
-                    self.vfd.displayOnOff(1)
-                    self.vfd.setBrightness(1)
-                    self.brightness_status = 'dim'
-                    if self.led is not None:
-                        self.led.value(1)
-
-            # On hours.
-            elif self.brightness_status != 'on':
-                self.vfd.displayOnOff(1)
-                self.vfd.setBrightness(self.brightness_set)
-                self.brightness_status = 'on'
-                if self.led is not None:
-                    self.led.value(1)
+            self.setNightDayBrightness(dim_hours, off_hours, night_wake)
 
             # Reconnect Wi-Fi if needed.
             if not self.wlan.isconnected():
+                # Indicate no Wi-Fi connection by setting the connection icon
+                # before trying to reconnect.
+                self.printWifiIcon()
+                # Reconnect.
                 self.connectWifi()
+
+            # If Wi-Fi has connected, show an icon.
+            self.printWifiIcon()
 
             # Wait.
             time.sleep(0.1)

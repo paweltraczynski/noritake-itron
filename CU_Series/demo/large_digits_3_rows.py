@@ -35,10 +35,10 @@ class LargeDigits3Rows:
         """
         Prints a selected large digit at a specified position on the display.
         
-        Requires 4 lines display, because the digits take 3 lines.
-        It's best to print them at row 0, but row 1 will also work.
+        Requires a display with at least three rows.
+        Four rows display is needed when starting at the second row.
 
-        :param digit: The digit to print, pass 0-9 or colon/dash/erase/erase/erase_colon.
+        :param digit: The digit to print, pass 0-9 or colon/dash/erase/erase_colon.
         :param column: The column to print the digit at.
         :param row: The row to print the digit at.
         """

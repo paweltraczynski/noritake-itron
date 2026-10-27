@@ -6,7 +6,7 @@ Use HD44780 compatible I2C display controller to communicate with the VFD.
 
 Requires https://github.com/dhylands/python_lcd files (included in the lib folder):
 - lcd_api.py
-- machine_i2c.py
+- machine_i2c_lcd.py
 
 Example usage:
 

@@ -1,9 +1,7 @@
 import time
 import network
-import requests
-from machine import RTC
 
-# Dots on the start are required for RPi Pico/MicroPython boards.
+# Use relative imports for modules in the current package.
 from .fetchers import Fetchers
 from .large_digits_2_rows import LargeDigits2Rows
 from .matrix_rain import MatrixRain
@@ -52,7 +50,7 @@ class ClockTemp:
         self.last_weather = None
 
         # Track brightness.
-        # Current brightness status (on, dimed, off).
+        # Current brightness status (on, dim, off).
         self.brightness_status = 'on'
 
         # Matrix Rain animation shown at every full hour.
@@ -219,21 +217,18 @@ class ClockTemp:
 
         # Print weather if it was fetched.
         if weather['success']:
-            temperature = weather['temperature']
-            humidity = weather['humidity']
-
             # Temperature should be rounded and always occupying 3
             # characters because it can, for example, be 5 or -12.
-            temperature = '{:>3.0f}'.format(temperature)
+            temperature = '{:>3.0f}'.format(
+                min(999, max(-99, weather['temperature']))
+            )
 
             # Humidity should be rounded and always in range of 0-99,
             # and also always 2 characters. It should never be more
             # than 99% because of available space.
-            if humidity > 99:
-                humidity = 99
-
-            # Humidity should always be 2 characters.
-            humidity = '{:>2.0f}'.format(humidity)
+            humidity = '{:>2.0f}'.format(
+                min(99, max(0, weather['humidity']))
+            )
 
             if self.displayed_temperature != temperature:
                 self.vfd.setCursor(13, 0)

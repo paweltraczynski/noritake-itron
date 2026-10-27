@@ -1,12 +1,8 @@
 """
 Main script for driving the Noritake CU VFD.
 
-If you are using MicroPython, for example, on Raspberry Pi Pico,
-this script will run automatically if you rename it to 'main.py'.
-
-When using regular Raspberry Pi, you need to manually run this script
-and instead of importing MicroPython 'machine' use 'gpiozero' or 'RPi.GPIO'
-and import Pin from it.
+When using MicroPython, for example, on Raspberry Pi Pico,
+this script will run automatically.
 """
 
 from machine import Pin#, I2C
@@ -29,7 +25,7 @@ lines = 2
 cols = 16
 
 # VFD over GPIO.
-# Requires 'from noritake_gpio import Noritake'.
+# Requires 'from noritake_cu_gpio import NoritakeCuGPIO'.
 
 # Initialize Noritake VFD.
 vfd = NoritakeCuGPIO(
@@ -44,7 +40,7 @@ vfd = NoritakeCuGPIO(
 )
 
 # VFD over I2C.
-# Requires 'from noritake_gpio import Noritake'.
+# Requires 'from noritake_cu_gpio import NoritakeCuI2C'.
 
 # Initialize Noritake VFD.
 # i2c = I2C(0, scl = Pin(1), sda = Pin(0))

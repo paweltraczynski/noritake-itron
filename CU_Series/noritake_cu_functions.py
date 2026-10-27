@@ -54,15 +54,33 @@ class NoritakeCuFunctions(LcdApi):
 
         :param data: The data to write.
         """
+        if isinstance(data, int):
+            data = (data,)
+
         if isinstance(data, (list, tuple, bytes, bytearray)):
             for byte in data:
                 self.hal_write_data(byte)
+                self.cursor_x += 1
+
+                # Wrap to the next row after the last column.
+                self.implied_newline = self.cursor_x >= self.num_columns
+                if self.implied_newline:
+                    self.cursor_x = 0
+                    self.cursor_y += 1
+
+                # Wrap to the first row after the last row.
+                if self.cursor_y >= self.num_lines:
+                    self.cursor_y = 0
+
+                # Keep the hardware cursor aligned with the tracked position.
+                self.move_to(self.cursor_x, self.cursor_y)
+
         else:
-            self.hal_write_data(data)
+            raise TypeError('Unsupported data type for writeData().')
 
     def writeCustomChar(self, location, charmap):
         """
-        "Writes a custom character to one of the 8 CGRAM locations.
+        Writes a custom character to one of the 8 CGRAM locations.
 
         :param location: The location to write the character to (0-7)
         :param charmap: The character map to write to the location.
@@ -119,7 +137,7 @@ class NoritakeCuFunctions(LcdApi):
         :param amount: By how many characters to move the cursor right.
         """
         for _ in range(amount):
-            if self.cursor_x < self.num_columns:
+            if self.cursor_x < self.num_columns - 1:
                 self.writeCommand(self.LCD_MOVE | self.LCD_MOVE_RIGHT)
                 self.cursor_x += 1
 

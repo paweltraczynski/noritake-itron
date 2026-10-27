@@ -5,7 +5,7 @@ Usage:
 
 from machine import Pin
 import time
-from noritake_gpio import Noritake
+from noritake_cu_gpio import NoritakeCuGPIO
 from matrix_rain import MatrixRain
 
 # Allow time for the display to become ready for receiving commands.
@@ -16,7 +16,7 @@ lines = 2
 cols = 24
 
 # Initialize Noritake VFD:
-vfd = Noritake(
+vfd = NoritakeCuGPIO(
     rs_pin = Pin(0),
     enable_pin = Pin(1),
     d4_pin = Pin(2),
@@ -81,7 +81,7 @@ class MatrixRain:
 
         :return hex: A matrix symbol character encoded as a hex value.
         """
-        # We are using two columns of 16 symbols each.
+        # We are using three groups of symbols (0xb0, 0xc0, 0xd0).
         # Most of them are Japanese characters in the
         # character set of the Noritake CU.
         matrix_chars_hex1 = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f]
@@ -116,12 +116,12 @@ class MatrixRain:
                 # First col: draw a new char and count chars/spaces.
                 if col == 0:
                     # Printing block of chars, min 6, max 14.
-                    if self.char_count[line] != 0 and self.char_count[line] <= random.randint(self.chars_block_min, self.chars_block_max):
+                    if self.char_count[line] != 0 and self.char_count[line] < random.randint(self.chars_block_min, self.chars_block_max):
                         new_chars[line][col] = self.get_char()
                         self.char_count[line] += 1
 
-                    # Printing block of spaces, min 2, max 6.
-                    elif self.space_count[line] != 0 and self.space_count[line] <= random.randint(self.spaces_block_min, self.spaces_block_max):
+                    # Printing block of spaces, min 2, max 4.
+                    elif self.space_count[line] != 0 and self.space_count[line] < random.randint(self.spaces_block_min, self.spaces_block_max):
                         new_chars[line][col] = self.get_space()
                         self.space_count[line] += 1
 
@@ -182,8 +182,10 @@ class MatrixRain:
         start_time = time.ticks_ms()
 
         while True:
-            # Exit after the timeout.
-            if timeout and time.ticks_diff(time.ticks_ms(), start_time) >= (timeout * 1000):
+            # Exit after the timeout. None allows the animation to run indefinitely.
+            if timeout is not None and time.ticks_diff(
+                time.ticks_ms(), start_time
+            ) >= timeout * 1000:
                 break
 
             self.move_matrix_chars()

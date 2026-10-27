@@ -10,7 +10,7 @@ Requires https://github.com/dhylands/python_lcd files (included in the lib folde
 
 Example usage:
 
-vfd = Noritake(
+vfd = NoritakeCuGPIO(
     rs_pin = Pin(0),
     enable_pin = Pin(1),
     d4_pin = Pin(2),
@@ -62,8 +62,15 @@ class NoritakeCuGPIO(GpioLcd, NoritakeCuFunctions):
             4: 0x00
         }
 
+        # Validate the brightness before sending commands to the display.
+        if brightness not in levels:
+            raise ValueError('Brightness must be between 1 and 4.')
+
         self.rs_pin.value(0)
-        self.hal_write_8bits(self.LCD_FUNCTION)
+        self.hal_write_8bits(
+            self.LCD_FUNCTION
+            | (0 if self._4bit else self.LCD_FUNCTION_8BIT)
+        )
 
         self.rs_pin.value(1)
         self.hal_write_8bits(levels[brightness])

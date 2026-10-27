@@ -18,7 +18,7 @@ weather_api_key = 'your_api_key'
 weather_city = 'Warsaw'
 weather_unit = 'metric'
 
-# Display night hours diming.
+# Display night hours dimming.
 display_dim_start_hour = 20
 display_dim_end_hour = 0
 display_off_start_hour = 0

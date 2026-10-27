@@ -39,7 +39,7 @@ class LargeDigits2Rows:
         """
         Prints a selected large digit at a specified position on the display.
 
-        :param digit: The digit to print, pass 0-9 or colon/dash/erase/erase/erase_colon.
+        :param digit: The digit to print, pass 0-9 or colon/dash/erase/erase_colon.
         :param column: The column to print the digit at.
         :param row: The row to print the digit at.
         """

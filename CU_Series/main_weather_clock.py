@@ -1,6 +1,5 @@
 """
-While the MatrixOrbital library is MicroPython/CPython compatible,
-this main script is intended to be used with MicroPython for launching
+This main script is intended to be used with MicroPython for launching
 the weather display project, which was written for MicroPython.
 """
 import time
@@ -15,10 +14,10 @@ from demo.weather_clock import WeatherClock
 # Allow time for the display to become ready for receiving commands.
 time.sleep(1)
 
-# Set GPIO pins.
-dht_pin = 3
-button_pin = 2
-led_pin = 5
+# Set GPIO pins, e.g., 3, 2, 5.
+dht_pin = 10
+button_pin = 12
+led_pin = 11
 
 # Adjust the number of lines and columns that your display has.
 lines = 4
@@ -37,8 +36,14 @@ vfd = NoritakeCuGPIO(
 )
 
 # Weather and clock project that displays weather and time.
-#weather_clock = WeatherClock(vfd, lines = lines, cols = cols, dht_pin = dht_sensor_pin, button_pin = button_pin)
-weather_clock = WeatherClock(vfd, lines = lines, cols = cols, dht_pin = 10, button_pin = 12, led_pin = 11)
+weather_clock = WeatherClock(
+    vfd = vfd,
+    lines = lines,
+    cols = cols,
+    dht_pin = dht_pin,
+    button_pin = button_pin,
+    led_pin = led_pin
+)
 
 # Start the main loop.
 weather_clock.keepRunning()

@@ -12,7 +12,6 @@ VFDs and supports the following models:
 - 24x2 Characters – CU24025
 - 40x2 Characters – CU40025, CU40026
 - 40x4 Characters – CU40045
-- 40x6 Characters – CU40066
 
 Note: Models usually include factory suffixes (e.g., -UW1J, -UX3J, or -TW200A)
 indicating interface or revision details. All variations of the base models
@@ -96,7 +95,7 @@ The 4 pins on the side of the converter connect directly to the GPIO port using 
 
 ## Demo scripts
 
-There are two demo scripts that you can run and customize to your needs:
+There are three demo scripts that you can run and customize to your needs:
 - Matrix Rain animation (`matrix_rain.py`)
 - Digital Clock (`clock.py`)
 - Weather Clock (`weather_clock.py`)

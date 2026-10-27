@@ -50,7 +50,7 @@ class Fetchers:
             'temperature': 0,
             'humidity': 0,
             'wind': 0,
-            'conditions': '',
+            'conditions': None,
             'success': False,
         }
 
@@ -166,22 +166,28 @@ class Fetchers:
                 # was recently fetched from the Internet.
                 self.data_fetched = True
 
-                response.close()
                 print('Synchronized date and time.')
                 return True
 
             else:
                 self.date_last_failed = True
-                response.close()
+
                 print('Failed to synchronize date and time.')
                 return False
 
         except Exception as e:
             self.date_last_failed = True
-            if hasattr(response, 'close'):
-                response.close()
+
             print('Date and time synchronization error:', e)
             return False
+
+        finally:
+            # Close the response without changing the synchronization result.
+            if hasattr(response, 'close'):
+                try:
+                    response.close()
+                except Exception as e:
+                    print('Date and time response cleanup error:', e)
 
     def getDateTime(self):
         """
@@ -234,7 +240,7 @@ class Fetchers:
 
     def fetchWeather(self):
         """
-        Fetches the weather data for from the OpenWeatherMap API.
+        Fetches the weather data from the OpenWeatherMap API.
         """
         print('Fetching weather data from the OpenWeatherMap.')
 
@@ -250,7 +256,7 @@ class Fetchers:
         temperature = 0
         humidity = 0
         wind = 0
-        conditions = ''
+        conditions = None
         success = False
 
         self.weather_last_attempt = time.ticks_ms()
@@ -258,7 +264,7 @@ class Fetchers:
         try:
             weather = self.urlGetJson(weather_url, params)
 
-            # Weather API deta structure.
+            # Weather API data structure.
             # timezone => 7200
             # sys => Dict {
             #   type => 2
@@ -307,7 +313,7 @@ class Fetchers:
                 temperature = round(weather['main']['temp'], 1)
                 humidity = round(weather['main']['humidity'])
                 wind = round(weather['wind']['speed'], 1)
-                conditions = weather['weather'][0]['main']
+                conditions = weather['weather'][0]['id']
                 success = True
 
                 # Save the timestamp of the successful synchronization.

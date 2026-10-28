@@ -52,6 +52,9 @@ class WeatherClock:
         else:
             self.sensor = None
 
+        self.dht_temperature_offset = config.dht_temperature_offset
+        self.dht_humidity_offset = config.dht_humidity_offset
+
         # Button for brightness, layout selection, and night wake.
         if button_pin is not None:
             self.button = Pin(button_pin, Pin.IN, Pin.PULL_UP)
@@ -114,7 +117,7 @@ class WeatherClock:
 
         # TODO: Isolate DHT22 physically from internal air.
 
-        # TODO: Implement config for tuning DHT read values (e.g., temp -2.5).
+        # TODO: Implement matrix rain on full hours.
 
     # .-----------------------------------------------------.
     # |                  GENERAL FUNCTIONS                  |
@@ -602,8 +605,12 @@ class WeatherClock:
             try:
                 self.sensor.measure()
 
+                # Get calibrated temperature and humidity.
+                temperature = self.sensor.temperature() + self.dht_temperature_offset
+                humidity = self.sensor.humidity() + self.dht_humidity_offset
+
                 # Clamp the temperature to fit the five-character VFD limit.
-                temperature = min(999.9, max(-99.9, self.sensor.temperature()))
+                temperature = min(999.9, max(-99.9, temperature))
 
                 # Temperature should always include 1 fraction digit and occupy
                 # 5 characters because it can, for example, be '-15.5'.
@@ -613,7 +620,7 @@ class WeatherClock:
                 # and also always 2 characters. It should never be more
                 # than 99% because of available space.
                 humidity = '{:>2.0f}'.format(
-                    min(99, max(0, self.sensor.humidity()))
+                    min(99, max(0, humidity))
                 )
 
             # Handle exception if reading failed.

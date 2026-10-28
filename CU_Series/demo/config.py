@@ -27,3 +27,8 @@ display_off_end_hour = 8
 # VFD Matrix Rain animation at every full hour.
 # Set the animation duration in seconds or set to 0 to disable it completely.
 matrix_rain_duration = 30
+
+# Weather clock configuration.
+# DHT22 calibration offsets.
+dht_temperature_offset = 0.0
+dht_humidity_offset = 0.0

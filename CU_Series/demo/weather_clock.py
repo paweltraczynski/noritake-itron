@@ -4,6 +4,7 @@ import dht
 
 # Use relative imports for modules in the current package.
 from .wifi import WiFiConnection
+from .settings_handler import SettingsHandler
 from .fetchers import Fetchers
 from .large_digits_3_rows import LargeDigits3Rows
 from .large_digits_2_rows import LargeDigits2Rows
@@ -40,6 +41,14 @@ class WeatherClock:
 
         # Data fetchers, for fetching weather and time from the Internet.
         self.fetchers = Fetchers()
+
+        # Settings handler.
+        self.settings_handler = SettingsHandler('settings.txt', {
+            'layout': 1,
+            'brightness': 4,
+            'led': 4,
+        })
+        settings = self.settings_handler.getSettings()
 
         # Large digits 3 rows, used by layout 1.
         self.digits3 = LargeDigits3Rows(self.vfd)
@@ -93,8 +102,6 @@ class WeatherClock:
         # Track brightness.
         # Current brightness status (on, dim, off, or night_wake).
         self.brightness_status = 'on'
-        # Last user set brightness.
-        self.brightness_set = 4
         # Night wake timer used when turning the display on for a moment
         # during the night.
         self.night_wake_started = None
@@ -106,10 +113,17 @@ class WeatherClock:
         # Track download icon display time.
         self.download_icon_time = 0
 
-        # There are two different layouts used to show the data.
-        self.layout = 1
+        # Last user set brightness.
+        self.brightness_set = settings['brightness']
+        if self.brightness_set not in (1, 2, 3, 4):
+            self.brightness_set = 4
 
-        # TODO: Implement saving  brightness, layout and LED in settings.txt file.
+        # There are two different layouts used to show the data.
+        self.layout = settings['layout']
+        if self.layout not in (1, 2):
+            self.layout = 1
+
+        # TODO: Implement saving LED in settings.txt file.
 
         # TODO: Implement button double click to walk through LED brightness level and turn off.
 
@@ -279,8 +293,8 @@ class WeatherClock:
 
         self.brightness_set = brightness
 
-        if self.brightness_status == 'on':
-            self.vfd.setBrightness(brightness)
+        self.settings_handler.saveSingleSetting('brightness', brightness)
+        self.vfd.setBrightness(brightness)
 
     def buttonChangeLayout(self):
         """
@@ -304,9 +318,11 @@ class WeatherClock:
 
         if self.layout == 1:
             self.layout = 2
+            self.settings_handler.saveSingleSetting('layout', self.layout)
             self.initScreenLayout2()
         else:
             self.layout = 1
+            self.settings_handler.saveSingleSetting('layout', self.layout)
             self.initScreenLayout1()
 
     def buttonDetectPress(self, dim_hours, off_hours):

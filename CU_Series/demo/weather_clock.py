@@ -8,6 +8,7 @@ from .settings_handler import SettingsHandler
 from .fetchers import Fetchers
 from .large_digits_3_rows import LargeDigits3Rows
 from .large_digits_2_rows import LargeDigits2Rows
+from .matrix_rain import MatrixRain
 
 # Import config_local.py if user has created it.
 try:
@@ -64,7 +65,7 @@ class WeatherClock:
         self.dht_temperature_offset = config.dht_temperature_offset
         self.dht_humidity_offset = config.dht_humidity_offset
 
-        # Button for brightness, layout selection, and night wake.
+        # Button for the display/LED brightness, layout selection, and night wake.
         if button_pin is not None:
             self.button = Pin(button_pin, Pin.IN, Pin.PULL_UP)
         else:
@@ -99,8 +100,8 @@ class WeatherClock:
         self.last_weather = None
         self.last_indoor = None
 
-        # Track brightness.
-        # Current brightness status (on, dim, off, or night_wake).
+        # Track display brightness.
+        # Current display brightness status (on, dim, off, or night_wake).
         self.brightness_status = 'on'
         # Night wake timer used when turning the display on for a moment
         # during the night.
@@ -113,15 +114,24 @@ class WeatherClock:
         # Track download icon display time.
         self.download_icon_time = 0
 
-        # Last user set brightness.
-        self.brightness_set = settings['brightness']
-        if self.brightness_set not in (1, 2, 3, 4):
-            self.brightness_set = 4
+        # Last user set display brightness.
+        self.display_brightness = settings['brightness']
+        if self.display_brightness not in (1, 2, 3, 4):
+            self.display_brightness = 4
+
+        # Last user set LED brightness (0 is off).
+        self.led_brightness = settings['led']
+        if self.led_brightness not in (0, 1, 2, 3, 4):
+            self.led_brightness = 4
 
         # There are two different layouts used to show the data.
         self.layout = settings['layout']
         if self.layout not in (1, 2):
             self.layout = 1
+
+        # Matrix Rain animation shown at every full hour.
+        self.matrix = MatrixRain(self.vfd, lines, cols)
+        self.matrix_last_hour = None
 
         # TODO: Implement saving LED in settings.txt file.
 
@@ -130,8 +140,6 @@ class WeatherClock:
         # TODO: Implement LED PWM brightness levels.
 
         # TODO: Isolate DHT22 physically from internal air.
-
-        # TODO: Implement matrix rain on full hours.
 
     # .-----------------------------------------------------.
     # |                  GENERAL FUNCTIONS                  |
@@ -271,36 +279,15 @@ class WeatherClock:
         # On hours.
         elif self.brightness_status != 'on':
             self.vfd.displayOnOff(1)
-            self.vfd.setBrightness(self.brightness_set)
+            self.vfd.setBrightness(self.display_brightness)
             self.brightness_status = 'on'
             if self.led is not None:
                 self.led.value(1)
 
-    # .-----------------------------------------------------.
-    # |                  BUTTON FUNCTIONS                   |
-    # '-----------------------------------------------------'
-
-    def buttonChangeBrightness(self):
+    def resetDisplayedState(self):
         """
-        Cycles through the available display brightness levels.
+        Resets display states, which forces all display elements to be redrawn.
         """
-        # Each time the brightness gets decreased by 1.
-        brightness = self.brightness_set - 1
-
-        # After reaching the minimum brightness, reset to maximum.
-        if brightness < 1:
-            brightness = 4
-
-        self.brightness_set = brightness
-
-        self.settings_handler.saveSingleSetting('brightness', brightness)
-        self.vfd.setBrightness(brightness)
-
-    def buttonChangeLayout(self):
-        """
-        Changes the display layout used to show all the details.
-        """
-        # Force all elements to redraw in their new positions.
         self.displayed_time = None
         self.displayed_temperature = None
         self.displayed_humidity = None
@@ -316,6 +303,33 @@ class WeatherClock:
         self.last_weather = None
         self.last_indoor = None
 
+    # .-----------------------------------------------------.
+    # |                  BUTTON FUNCTIONS                   |
+    # '-----------------------------------------------------'
+
+    def buttonChangeBrightness(self):
+        """
+        Cycles through the available display brightness levels.
+        """
+        # Each time the brightness gets decreased by 1.
+        brightness = self.display_brightness - 1
+
+        # After reaching the minimum brightness, reset to maximum.
+        if brightness < 1:
+            brightness = 4
+
+        self.display_brightness = brightness
+
+        self.settings_handler.saveSingleSetting('brightness', brightness)
+        self.vfd.setBrightness(brightness)
+
+    def buttonChangeLayout(self):
+        """
+        Changes the display layout used to show all the details.
+        """
+        # Force all elements to redraw in their new positions.
+        self.resetDisplayedState()
+
         if self.layout == 1:
             self.layout = 2
             self.settings_handler.saveSingleSetting('layout', self.layout)
@@ -329,10 +343,10 @@ class WeatherClock:
         """
         Detects a button press and reacts accordingly.
 
-        Handles brightness changes, layout selection, and display wake-up.
+        Handles display/LED brightness changes, layout selection, and display wake-up.
 
-        Short press changes brightness during daytime and wakes up the
-        display during off hours.
+        Short press during daytime changes display brightness.
+        Short press during off hours wakes up the display.
 
         Long press changes the layout during daytime, dim hours,
         or during an active night wake.
@@ -728,6 +742,36 @@ class WeatherClock:
             self.vfd.writeNamedChar('not_equal')
             self.displayed_wifi = 0
 
+    def printMatrixRain(self):
+        """
+        Shows Matrix Rain once in every full hour.
+        """
+        if config.matrix_rain_duration == 0:
+            return
+
+        date = self.fetchers.getDateTime()
+
+        if date['year'] == 0:
+            return
+
+        hour = date['hour_int']
+        minute = date['minute_int']
+
+        if self.matrix_last_hour == hour or minute != 0:
+            return
+
+        self.matrix_last_hour = hour
+
+        self.matrix.animate(config.matrix_rain_duration)
+
+        # Restore the active layout after the animation.
+        if self.layout == 1:
+            self.initScreenLayout1()
+        else:
+            self.initScreenLayout2()
+
+        self.resetDisplayedState()
+
     # .-----------------------------------------------------.
     # |                    LAYOUT INITS                     |
     # '-----------------------------------------------------'
@@ -864,6 +908,9 @@ class WeatherClock:
 
             # Update night/day brightness.
             self.setNightDayBrightness(dim_hours, off_hours, night_wake)
+
+            # Show Matrix Rain animation on every full hour, e.g., at 5:00.
+            self.printMatrixRain()
 
             # Reconnect Wi-Fi if needed.
             if not self.wifi.isConnected():

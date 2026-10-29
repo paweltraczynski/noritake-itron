@@ -58,8 +58,11 @@ class NoritakeCuFunctions(LcdApi):
             data = (data,)
 
         if isinstance(data, (list, tuple, bytes, bytearray)):
+            written = False
+
             for byte in data:
                 self.hal_write_data(byte)
+                written = True
                 self.cursor_x += 1
 
                 # Wrap to the next row after the last column.
@@ -72,7 +75,8 @@ class NoritakeCuFunctions(LcdApi):
                 if self.cursor_y >= self.num_lines:
                     self.cursor_y = 0
 
-                # Keep the hardware cursor aligned with the tracked position.
+            # Keep the hardware cursor aligned with the tracked position.
+            if written:
                 self.move_to(self.cursor_x, self.cursor_y)
 
         else:

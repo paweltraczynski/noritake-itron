@@ -33,6 +33,13 @@ rain.animate()
 import time
 import random
 
+# Import config_local.py if user has created it.
+try:
+    from . import config_local as config
+# Otherwise import config.py (assuming the user has customized it).
+except ImportError:
+    from . import config
+
 class MatrixRain:
     """
     Displays a Matrix Rain animation.
@@ -44,11 +51,11 @@ class MatrixRain:
         self.cols = cols
 
         # Configuration.
-        self.chars_block_min = 6
-        self.chars_block_max = 14
-        self.spaces_block_min = 2
-        self.spaces_block_max = 4
-        self.animation_interval = 0.15
+        self.chars_block_min = config.matrix_chars_block_min_length
+        self.chars_block_max = config.matrix_chars_block_max_length
+        self.spaces_block_min = config.matrix_spaces_block_min_length
+        self.spaces_block_max = config.matrix_spaces_block_max_length
+        self.animation_interval = config.matrix_animation_interval
 
         # Prepare initial matrix chars dictionary.
         self.chars = {}

@@ -1,7 +1,7 @@
 import time
-import network
 
 # Use relative imports for modules in the current package.
+from .wifi import WiFiConnection
 from .fetchers import Fetchers
 from .large_digits_2_rows import LargeDigits2Rows
 from .matrix_rain import MatrixRain
@@ -16,6 +16,10 @@ except ImportError:
 class ClockTemp:
     """
     Displays a local time clock and local weather data.
+
+    :param vfd: The Noritake CU class instance (GPIO or I2C).
+    :param lines: The number of lines on the display.
+    :param cols: The number of columns on the display.
     """
 
     def __init__(self, vfd, lines, cols):
@@ -31,11 +35,7 @@ class ClockTemp:
         self.digits = LargeDigits2Rows(self.vfd)
 
         # Wi-Fi.
-        self.wlan = network.WLAN(network.STA_IF)
-        self.ssid = config.wifi_ssid
-        self.password = config.wifi_password
-        self.wifi_last_attempt = None
-        self.wifi_retry_interval = 10 * 1000
+        self.wifi = WiFiConnection(config.wifi_ssid, config.wifi_password)
 
         # Track last displayed values.
         # This prevents writing data that did not change to the display.
@@ -57,74 +57,34 @@ class ClockTemp:
         self.matrix = MatrixRain(self.vfd, lines, cols)
         self.matrix_last_hour = None
 
+    # .-----------------------------------------------------.
+    # |                  GENERAL FUNCTIONS                  |
+    # '-----------------------------------------------------'
+
     def connectWifi(self):
         """
         Connects to the Wi-Fi network, retries if the SSID is unavailable.
         """
-        # TODO: Improve the Wi-Fi connecting so it is non-blocking.
-        current_ticks = time.ticks_ms()
-
-        # Do not retry connecting more often than the configured interval.
-        if (
-            self.wifi_last_attempt is not None and
-            time.ticks_diff(current_ticks, self.wifi_last_attempt)
-            < self.wifi_retry_interval
-        ):
-            return False
-
-        self.wifi_last_attempt = current_ticks
-        self.wlan.active(True)
-
         # Indicate that connection is in progress.
         self.vfd.clearDisplay()
         self.vfd.setCursor(0, 0)
         self.vfd.write('Connecting Wi-Fi')
         print('Trying to connect to Wi-Fi...')
 
-        try:
-            # Initiate a connection and give it up to 10 seconds.
-            try:
-                self.wlan.connect(self.ssid, self.password)
-                for _ in range(10):
-                    if self.wlan.isconnected():
-                        break
-                    time.sleep(1)
-            except OSError as e:
-                print('Wi-Fi connection error:', e)
-                try:
-                    self.wlan.disconnect()
-                except OSError:
-                    pass
-                return False
+        connected = self.wifi.connect()
 
-            if not self.wlan.isconnected():
-                try:
-                    self.wlan.disconnect()
-                except OSError:
-                    pass
-                print('Wi-Fi unavailable; retrying...')
-                return False
-
-            # Indicate that connection was successful.
+        if connected:
             self.vfd.clearDisplay()
             self.vfd.setCursor(0, 0)
             self.vfd.write('Wi-Fi connected')
-            print('Established Wi-Fi connection.')
-
             time.sleep(1.5)
-            return True
 
-        finally:
-            # Wait the retry interval after this attempt finishes.
-            self.wifi_last_attempt = time.ticks_ms()
-
-            # Restore the clock and weather after every connection attempt.
-            self.vfd.clearDisplay()
-            self.displayed_time = None
-            self.displayed_temperature = None
-            self.displayed_humidity = None
-            self.last_time = None
-            self.last_weather = None
+        self.vfd.clearDisplay()
+        self.displayed_time = None
+        self.displayed_temperature = None
+        self.displayed_humidity = None
+        self.last_time = None
+        self.last_weather = None
 
     def checkHourInRange(self, hour, start, end):
         """
@@ -143,6 +103,72 @@ class ClockTemp:
             return start <= hour < end
 
         return hour >= start or hour < end
+
+    def getDimOff(self):
+        """
+        Returns information if dim hours and off hours are active.
+
+        :return: The information about dim hours and off hours.
+        """
+        date = self.fetchers.getDateTime()
+
+        # Prepare the result.
+        result = {
+            'dim_hours': False,
+            'off_hours': False,
+        }
+
+        # Calculate if dim hours or off hours are active.
+        if date['year'] != 0:
+            result['dim_hours'] = self.checkHourInRange(
+                date['hour_int'],
+                config.display_dim_start_hour,
+                config.display_dim_end_hour
+            )
+
+            result['off_hours'] = self.checkHourInRange(
+                date['hour_int'],
+                config.display_off_start_hour,
+                config.display_off_end_hour
+            )
+
+        return result
+
+    def setNightDayBrightness(self, dim_hours, off_hours, night_wake):
+        """
+        Sets the brightness based on the dim/off and night wake status.
+
+        :param dim_hours: True if dim hours are active, False otherwise.
+        :param off_hours: True if off hours are active, False otherwise.
+        :param night_wake: True if a night wake is active, False otherwise.
+        """
+        if off_hours:
+            if night_wake:
+                if self.brightness_status != 'night_wake':
+                    self.vfd.displayOnOff(1)
+                    self.vfd.setBrightness(1)
+                    self.brightness_status = 'night_wake'
+
+            elif self.brightness_status != 'off':
+                self.vfd.displayOnOff(0)
+                self.brightness_status = 'off'
+
+        # Dim hours.
+        elif dim_hours:
+            if self.brightness_status != 'dim':
+                self.vfd.displayOnOff(1)
+                self.vfd.setBrightness(1)
+                self.brightness_status = 'dim'
+
+        # On hours.
+        elif self.brightness_status != 'on':
+            self.vfd.displayOnOff(1)
+            self.vfd.setBrightness(4)
+            self.brightness_status = 'on'
+
+    # .-----------------------------------------------------.
+    # |                 PRINTING FUNCTIONS                  |
+    # '-----------------------------------------------------'
 
     def printDateTime(self):
         """
@@ -251,7 +277,43 @@ class ClockTemp:
                 self.vfd.writeText('--')
                 self.displayed_humidity = '--'
 
-    def screenInit(self):
+    def printMatrixRain(self):
+        """
+        Shows Matrix Rain once in every full hour.
+        """
+        if config.matrix_rain_duration == 0:
+            return
+
+        date = self.fetchers.getDateTime()
+
+        if date['year'] == 0:
+            return
+
+        hour = date['hour_int']
+        minute = date['minute_int']
+
+        if self.matrix_last_hour == hour or minute != 0:
+            return
+
+        self.matrix_last_hour = hour
+
+        self.matrix.animate(config.matrix_rain_duration)
+
+        # Restore the clock screen after the animation.
+        self.initScreen()
+
+        # Reset displayed clock data so that it is rewritten.
+        self.displayed_time = None
+        self.displayed_temperature = None
+        self.displayed_humidity = None
+        self.last_weather = None
+        self.last_time = None
+
+    # .-----------------------------------------------------.
+    # |                    LAYOUT INITS                     |
+    # '-----------------------------------------------------'
+
+    def initScreen(self):
         """
         Initializes VFD large digits and prints a message and then placeholders.
         """
@@ -281,12 +343,19 @@ class ClockTemp:
         self.vfd.setCursor(14, 1)
         self.vfd.writeText('--')
 
+    # .-----------------------------------------------------.
+    # |                      MAIN LOOP                      |
+    # '-----------------------------------------------------'
+
     def keepRunning(self):
         """
         The main loop that keeps the clock running.
         """
+        # Connect to Wi-Fi.
         self.connectWifi()
-        self.screenInit()
+
+        # Initialize the screen layout.
+        self.initScreen()
 
         while True:
             # Update displayed time (fetches new every 2 hours).
@@ -295,64 +364,21 @@ class ClockTemp:
             # Update displayed weather (fetches new every 10 minutes).
             self.printWeather()
 
-            # Time needed for further operations.
-            date = self.fetchers.getDateTime()
+            # Check if dim hours and off hours are active.
+            dim_off = self.getDimOff()
+            off_hours = dim_off['off_hours']
+            dim_hours = dim_off['dim_hours']
 
-            # Screen dimming at night (requires parallel connection).
-            if date['year'] != 0:
-                hour = date['hour_int']
+            # Update night/day brightness.
+            night_wake = False
+            self.setNightDayBrightness(dim_hours, off_hours, night_wake)
 
-                off_hours = self.checkHourInRange(
-                    hour,
-                    config.display_off_start_hour,
-                    config.display_off_end_hour
-                )
-
-                dim_hours = self.checkHourInRange(
-                    hour,
-                    config.display_dim_start_hour,
-                    config.display_dim_end_hour
-                )
-
-                # Off hours.
-                if off_hours:
-                    if self.brightness_status != 'off':
-                        self.vfd.displayOnOff(0)
-                        self.brightness_status = 'off'
-
-                # Dim hours.
-                elif dim_hours:
-                    if self.brightness_status != 'dim':
-                        self.vfd.displayOnOff(1)
-                        self.vfd.setBrightness(1)
-                        self.brightness_status = 'dim'
-
-                # On hours.
-                elif self.brightness_status != 'on':
-                    self.vfd.displayOnOff(1)
-                    self.vfd.setBrightness(4)
-                    self.brightness_status = 'on'
-
-            # Show Matrix Rain animation once in an hour, e.g., at 5:00 or 12:00.
-            if date['year'] != 0 and config.matrix_rain_duration != 0:
-                hour = date['hour_int']
-                minute = date['minute_int']
-
-                if self.matrix_last_hour != hour and minute == 0:
-                    self.matrix_last_hour = hour
-
-                    self.matrix.animate(config.matrix_rain_duration)
-                    self.vfd.clearDisplay()
-
-                    # Reset displayed clock data so that it is rewritten.
-                    self.displayed_time = None
-                    self.displayed_temperature = None
-                    self.displayed_humidity = None
-                    self.last_weather = None
-                    self.last_time = None
+            # Show Matrix Rain animation on every full hour, e.g., at 5:00.
+            self.printMatrixRain()
 
             # Reconnect Wi-Fi if needed.
-            if not self.wlan.isconnected():
+            if not self.wifi.isConnected():
                 self.connectWifi()
 
+            # Wait.
             time.sleep(0.1)

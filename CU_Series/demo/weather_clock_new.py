@@ -1,11 +1,11 @@
 import time
-from machine import Pin
+from machine import Pin, PWM
 import dht
 
 # Use relative imports for modules in the current package.
 from .wifi import WiFiConnection
-from .settings_handler import SettingsHandler
 from .fetchers import Fetchers
+from .settings_handler import SettingsHandler
 from .large_digits_3_rows import LargeDigits3Rows
 from .large_digits_2_rows import LargeDigits2Rows
 from .matrix_rain import MatrixRain
@@ -43,6 +43,9 @@ class WeatherClock:
         # Data fetchers, for fetching weather and time from the Internet.
         self.fetchers = Fetchers()
 
+        # Wi-Fi.
+        self.wifi = WiFiConnection(config.wifi_ssid, config.wifi_password)
+
         # Settings handler.
         self.settings_handler = SettingsHandler('settings.txt', {
             'layout': 1,
@@ -50,6 +53,22 @@ class WeatherClock:
             'led': 4,
         })
         settings = self.settings_handler.getSettings()
+
+        # Last user set display brightness.
+        self.display_brightness = settings['brightness']
+        if self.display_brightness not in (1, 2, 3, 4):
+            self.display_brightness = 4
+        vfd.setBrightness(self.display_brightness)
+
+        # Last user set LED brightness (0 is off).
+        self.led_brightness = settings['led']
+        if self.led_brightness not in (0, 1, 2, 3, 4):
+            self.led_brightness = 4
+
+        # Last user chosen layout used to show the data.
+        self.layout = settings['layout']
+        if self.layout not in (1, 2):
+            self.layout = 1
 
         # Large digits 3 rows, used by layout 1.
         self.digits3 = LargeDigits3Rows(self.vfd)
@@ -71,15 +90,24 @@ class WeatherClock:
         else:
             self.button = None
 
-        # LED.
+        # LED PWM duty cycle brightness levels.
+        self.led_brightness_levels = {
+            0: 0,
+            1: 12000,
+            2: 20000,
+            3: 38000,
+            4: 65535,
+        }
+
         if led_pin is not None:
-            self.led = Pin(led_pin, Pin.OUT)
-            self.led.value(1)
+            # TODO: Remove this once the LED is working properly.
+            #self.led = Pin(led_pin, Pin.OUT)
+            #self.led.value(1)
+            self.led = PWM(Pin(led_pin))
+            self.led.freq(1000)
+            self.led.duty_u16(self.led_brightness_levels[self.led_brightness])
         else:
             self.led = None
-
-        # Wi-Fi.
-        self.wifi = WiFiConnection(config.wifi_ssid, config.wifi_password)
 
         # Track last displayed values.
         # This prevents writing data that did not change to the display.
@@ -110,34 +138,15 @@ class WeatherClock:
         # Button last pressed time.
         self.button_press_time = None
         self.button_long_handled = False
+        self.button_last_short_release = None
+        self.button_ignore_until_release = False
 
         # Track download icon display time.
         self.download_icon_time = 0
 
-        # Last user set display brightness.
-        self.display_brightness = settings['brightness']
-        if self.display_brightness not in (1, 2, 3, 4):
-            self.display_brightness = 4
-
-        # Last user set LED brightness (0 is off).
-        self.led_brightness = settings['led']
-        if self.led_brightness not in (0, 1, 2, 3, 4):
-            self.led_brightness = 4
-
-        # There are two different layouts used to show the data.
-        self.layout = settings['layout']
-        if self.layout not in (1, 2):
-            self.layout = 1
-
         # Matrix Rain animation shown at every full hour.
         self.matrix = MatrixRain(self.vfd, lines, cols)
         self.matrix_last_hour = None
-
-        # TODO: Implement saving LED in settings.txt file.
-
-        # TODO: Implement button double click to walk through LED brightness level and turn off.
-
-        # TODO: Implement LED PWM brightness levels.
 
         # TODO: Isolate DHT22 physically from internal air.
 
@@ -259,13 +268,12 @@ class WeatherClock:
                     self.vfd.displayOnOff(1)
                     self.vfd.setBrightness(1)
                     self.brightness_status = 'night_wake'
-                    if self.led is not None:
-                        self.led.value(1)
+                    self.setLedOnOff(True)
+
             elif self.brightness_status != 'off':
                 self.vfd.displayOnOff(0)
                 self.brightness_status = 'off'
-                if self.led is not None:
-                    self.led.value(0)
+                self.setLedOnOff(False)
 
         # Dim hours.
         elif dim_hours:
@@ -273,16 +281,49 @@ class WeatherClock:
                 self.vfd.displayOnOff(1)
                 self.vfd.setBrightness(1)
                 self.brightness_status = 'dim'
-                if self.led is not None:
-                    self.led.value(1)
+                self.setLedOnOff(True)
 
         # On hours.
         elif self.brightness_status != 'on':
             self.vfd.displayOnOff(1)
             self.vfd.setBrightness(self.display_brightness)
             self.brightness_status = 'on'
-            if self.led is not None:
-                self.led.value(1)
+            self.setLedOnOff(True)
+
+    def setLedBrightness(self, brightness):
+        """
+        Sets the LED brightness.
+
+        The function sets the brightness of the LED without saving it
+        to the settings file.
+
+        :param brightness: The brightness level to set for the LED.
+        """
+        if self.led is None:
+            return
+
+        if brightness not in self.led_brightness_levels:
+            brightness = 4
+
+        self.led_brightness = brightness
+        self.led.duty_u16(self.led_brightness_levels[brightness])
+
+    def setLedOnOff(self, on_off):
+        """
+        Sets the LED on or off.
+
+        The function sets the brightness of the LED without saving it
+        to the settings file.
+
+        :param on_off: True to turn the LED on, False to turn it off.
+        """
+        if self.led is None:
+            return
+
+        if on_off:
+            self.setLedBrightness(self.led_brightness)
+        else:
+            self.led.duty_u16(0)
 
     def resetDisplayedState(self):
         """
@@ -320,8 +361,29 @@ class WeatherClock:
 
         self.display_brightness = brightness
 
+        # Save the new brightness setting.
         self.settings_handler.saveSingleSetting('brightness', brightness)
         self.vfd.setBrightness(brightness)
+
+    def buttonChangeLedBrightness(self):
+        """
+        Cycles through the available LED brightness levels (including 0 for off).
+        """
+        if self.led is None:
+            return
+
+        # Each time the brightness gets decreased by 1.
+        brightness = self.led_brightness - 1
+
+        # After reaching the minimum brightness, reset to maximum.
+        if brightness < 0:
+            brightness = 4
+
+        self.led_brightness = brightness
+        self.led.duty_u16(self.led_brightness_levels[brightness])
+
+        # Save the new brightness setting.
+        self.settings_handler.saveSingleSetting('led', brightness)
 
     def buttonChangeLayout(self):
         """
@@ -345,11 +407,11 @@ class WeatherClock:
 
         Handles display/LED brightness changes, layout selection, and display wake-up.
 
-        Short press during daytime changes display brightness.
-        Short press during off hours wakes up the display.
-
-        Long press changes the layout during daytime, dim hours,
-        or during an active night wake.
+        Functions:
+        - Short press during daytime changes display brightness
+        - Short press during off hours wakes up the display
+        - Long press changes the layout if the display is lit
+        - Double press when the display brightness mode is not off changes the LED brightness.
 
         :param dim_hours: Whether dim hours are active.
         :param off_hours: Whether off hours are active.
@@ -359,23 +421,55 @@ class WeatherClock:
 
         ticks_ms = time.ticks_ms()
 
+        # Handle a pending single click after the double-click window expires.
+        if (
+            self.button.value() != 0
+            and self.button_press_time is None
+            and self.button_last_short_release is not None
+            and time.ticks_diff(ticks_ms, self.button_last_short_release) > 500
+        ):
+            self.button_last_short_release = None
+
+            # Ignore display brightness changes during dim hours and night wake.
+            if not dim_hours and not off_hours:
+                # Single short press changes display brightness.
+                self.buttonChangeBrightness()
+
         if self.button.value() == 0:
+            if self.button_ignore_until_release:
+                return
+
             # Record the start of a new press.
             if self.button_press_time is None:
+                # Handle the second press of a double click immediately.
+                if (
+                    self.button_last_short_release is not None
+                    and time.ticks_diff(ticks_ms, self.button_last_short_release) <= 500
+                ):
+                    self.button_last_short_release = None
+                    self.button_ignore_until_release = True
+                    self.buttonChangeLedBrightness()
+                    return
+
                 self.button_press_time = ticks_ms
                 self.button_long_handled = False
 
             held_ms = time.ticks_diff(ticks_ms, self.button_press_time)
 
-            # Handle the long press once, without waiting for release.
+            # Handle the long press without waiting for the button release.
             if held_ms >= 1500 and not self.button_long_handled:
                 self.button_long_handled = True
+                self.button_last_short_release = None
 
                 # Allow layout changes only while the display is lit.
                 if not off_hours or self.getNightWake():
                     self.buttonChangeLayout()
 
+        elif self.button_ignore_until_release:
+            self.button_ignore_until_release = False
+
         elif self.button_press_time is not None:
+            self.button_ignore_until_release = False
             held_ms = time.ticks_diff(ticks_ms, self.button_press_time)
             long_handled = self.button_long_handled
 
@@ -392,12 +486,26 @@ class WeatherClock:
                 return
 
             # Wake the display or restart the active night wake timer.
+            if off_hours and self.brightness_status == 'off':
+                self.night_wake_started = ticks_ms
+                self.button_last_short_release = None
+                return
+
             if off_hours:
                 self.night_wake_started = ticks_ms
 
-            # Change brightness only outside dim hours and off hours.
-            elif not dim_hours:
-                self.buttonChangeBrightness()
+            # Handle single and double presses while the display brightness
+            # mode is not off.
+            if (
+                self.button_last_short_release is not None
+                and time.ticks_diff(ticks_ms, self.button_last_short_release) <= 500
+            ):
+                # Double press changes LED brightness.
+                self.button_last_short_release = None
+                self.buttonChangeLedBrightness()
+                return
+
+            self.button_last_short_release = ticks_ms
 
     # .-----------------------------------------------------.
     # |                 PRINTING FUNCTIONS                  |
@@ -867,7 +975,7 @@ class WeatherClock:
 
     def keepRunning(self):
         """
-        The main loop that keeps the info display running.
+        The main loop that keeps the weather clock running.
         """
         # Initialize the first screen layout.
         if self.layout == 1:

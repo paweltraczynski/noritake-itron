@@ -4,8 +4,14 @@ A CPython and MicroPython library for controlling Noritake Itron VFDs.
 
 This library contains two separate modules:
 
-- **[CU series](./CU_Series/README.md)** – a MicroPython module for character displays, for example, 16x2 characters
-- **[GU series](./GU_Series/README.md)** – a CPython / MicroPython module for graphical displays, for example, 256x64 pixels.
+- **[CU series](./CU_Series/README.md)** – a MicroPython module for character displays, for example, 16x2 characters, which includes:
+  - The display driver library
+  - The Matrix Rain animation project
+  - The Digital Clock project
+  - [The Weather Clock project](./CU_Series/README_WEATHER_CLOCK.md)
+- **[GU series](./GU_Series/README.md)** – a CPython / MicroPython module for graphical displays, for example, 256x64 pixels, which includes:
+  - The display driver library
+  - The Network Media Player Display Project
 
 Each module contains its own separate documentation.
 

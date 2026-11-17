@@ -28,7 +28,7 @@ The Gu series module contains:
 - An API to interact with the VFD
 - A parallel connection class for connecting via parallel (not needed for
   serial connection)
-- A Hi-Fi network player screen demo
+- A Hi-Fi network player screen project
 - Readme file with detailed information.
 
 ## Connections
@@ -143,16 +143,16 @@ is connected.
 
 <img src="images/parallel_connected.jpg" alt="Parallel connection" width="500">
 
-## Demo scripts
+## Projects
 
-There is a single demo script that your can run and customize to your needs:
-- Network Media Player Display (`hifi_display.py` and `hifi_display_icons.py`)
+There is a single project that you can run and customize to your needs:
+- Network Media Player Display Project (`hifi_display.py` and `hifi_display_icons.py`)
 
-## Network player VFD display
+## Network player VFD display project
 
 I have used the Noritake Itron GU256X64D 3900B as a display for my network
 music player, supporting AirPlay and Bluetooth. I am including the files
-used to drive the players VFD here as a demo.
+used to drive the players VFD here.
 
 It requires the following files:
 

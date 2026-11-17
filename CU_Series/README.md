@@ -211,4 +211,4 @@ Please see it here:
 
 The following picture shows the Weather Clock project in action:
 
-<img src="images/weather_clock/front_1.jpg" alt="Weather Clock project" width="500">
+<img src="images/weather_clock/layout_1.jpg" alt="Weather Clock project" width="500">

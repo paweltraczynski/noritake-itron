@@ -300,7 +300,7 @@ class ClockTemp:
         self.matrix.animate(config.matrix_rain_duration)
 
         # Restore the clock screen after the animation.
-        self.initScreen()
+        self.initScreen(show_message=False)
 
         # Reset displayed clock data so that it is rewritten.
         self.displayed_time = None
@@ -313,9 +313,11 @@ class ClockTemp:
     # |                    LAYOUT INITS                     |
     # '-----------------------------------------------------'
 
-    def initScreen(self):
+    def initScreen(self, show_message):
         """
         Initializes VFD large digits and prints a message and then placeholders.
+
+        :param show_message: Whether to show the fetching data message.
         """
         # Initialize the display.
         self.vfd.clearDisplay()
@@ -324,13 +326,13 @@ class ClockTemp:
         self.digits.largeDigitsInit()
 
         # Show fetching data message.
-        self.vfd.clearDisplay()
-        self.vfd.setCursor(0, 0)
-        self.vfd.write('Fetching data')
-        time.sleep(2)
+        if show_message:
+            self.vfd.setCursor(0, 0)
+            self.vfd.write('Fetching data')
+            time.sleep(2)
+            self.vfd.clearDisplay()
 
         # Show time placeholders.
-        self.vfd.clearDisplay()
         self.digits.largeDigit('dash', 0)
         self.digits.largeDigit('dash', 3)
         self.digits.largeDigit('dash', 7)
@@ -355,7 +357,7 @@ class ClockTemp:
         self.connectWifi()
 
         # Initialize the screen layout.
-        self.initScreen()
+        self.initScreen(show_message=True)
 
         while True:
             # Update displayed time (fetches new every 2 hours).

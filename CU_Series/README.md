@@ -25,11 +25,17 @@ Here are some examples of supported displays (CU16025 and CU20025):
 
 <img src="images/example_supported_displays.jpg" alt="Example supported displays" width="500">
 
+You can use the larger CU20045 too:
+
+<img src="images/example_supported_displays_2.jpg" alt="CU20045" width="500">
+
 The CU series module contains:
 - An API to interact with the VFD
-- A Matrix Rain animation demo
-- A Digital Clock demo with weather indication
-- Readme file with detailed information.
+- A Matrix Rain animation project
+- A Digital Clock project with weather indication
+- A Weather Clock project for the CU20045 module
+- A README file with detailed information
+- A separate README file for the Weather Clock project.
 
 The library module was implemented for MicroPython. However, with a bit of work
 it is possible to adapt it for regular Python.
@@ -93,24 +99,36 @@ The 4 pins on the side of the converter connect directly to the GPIO port using 
 - pin 3 - SDA - I<sup>2</sup>C data line on your Python board
 - pin 4 - SCL - I<sup>2</sup>C clock line on your Python board
 
-## Demo scripts
+## Projects
 
-There are three demo scripts that you can run and customize to your needs:
+There are three projects that you can run and customize to your needs:
 - Matrix Rain animation (`matrix_rain.py`)
 - Digital Clock (`clock.py`)
 - Weather Clock (`weather_clock.py`)
 
-To test if everything works, you can run the Matrix Rain demo script first
-as it has no configuration and does not rely on the internet connection
-and third party APIs.
+To test if everything works, you can run the Matrix Rain project
+as it doesn't require configuration and does not rely on the
+internet connection and third party APIs.
 
-## Matrix Rain animation demo
+All three projects require the `config.py` file. You can copy it to
+`config_local.py` and do edits in the copy.
+
+## Matrix Rain animation project
 
 The Matrix Rain animation requires these files:
 - `matrix_rain.py`
+- `config.py`
 
 To run the Matrix Rain animation, you need to make changes in the `main_gpio.py` or
 in `main_i2c.py` depending on what connection type you are using.
+
+There is also a configuration in the `config.py` file, which you can 
+adjust to have the Matrix Rain match your taste:
+- `matrix_chars_block_min_length` - minimum length of a matrix rain characters segment
+- `matrix_chars_block_max_length` - maximum length of a matrix rain characters segment
+- `matrix_spaces_block_min_length` - minimum length of a matrix rain spaces segment
+- `matrix_spaces_block_max_length` - maximum length of a matrix rain spaces segment
+- `matrix_animation_interval` - interval between animation frames
 
 Adjust the number of lines and columns that your VFD has:
 ```python
@@ -132,19 +150,20 @@ automatically).
 You can see the result of working Matrix Rain below  
 (actual animation is very smooth, here because of the GIF quality it is not):
 
-<img src="images/demo_matrix.gif" alt="Matrix Rain demo in action" width="500">
+<img src="images/demo_matrix.gif" alt="Matrix Rain project in action" width="500">
 
-### Digital Clock demo
+### Digital Clock project
 
 The Digital Clock requires these files:
 - `clock.py`
 - `matrix_rain.py`
+- `wifi.py`
 - `fetchers.py`
 - `config.py`
 - `large_digits_2_rows.py`
 
 To run the Digital Clock, first you need to make the same changes as explained
-in the Matrix Rain animation demo section, except this time you would have
+in the Matrix Rain animation project section, except this time you would have
 to uncomment the code related to the clock functionality:
 ```python
 # clock = ClockTemp(vfd, lines, cols)
@@ -172,11 +191,24 @@ for OpenWeatherMap. Links are provided in the configuration file. The API
 keys are needed so that the clock can retrieve the proper time and weather from
 the internet.
 
+You can also configure Matrix Rain animation for the Digital Clock. Refer
+to the Matrix Rain project to learn about configuration options.
+
 Once you configure everything in the config file, then you can run the Python
-script the same way as explained in the Matrix Rain demo. If the Wi-Fi and
+script the same way as explained in the Matrix Rain project. If the Wi-Fi and
 APIs access worked, then you should see a clock on the left and temperature and
 humidity on the right of the screen.
 
-The following picture shows the Digital Clock demo in action:
+The following picture shows the Digital Clock project in action:
 
-<img src="images/demo_clock.gif" alt="Digital Clock demo in action" width="500">
+<img src="images/demo_clock.gif" alt="Digital Clock project in action" width="500">
+
+### Weather Clock project
+
+The Weather Clock project has its own readme file.  
+Please see it here:
+[README_WEATHER_CLOCK.md](README_WEATHER_CLOCK.md)
+
+The following picture shows the Weather Clock project in action:
+
+<img src="images/weather_clock/front_1.jpg" alt="Weather Clock project" width="500">

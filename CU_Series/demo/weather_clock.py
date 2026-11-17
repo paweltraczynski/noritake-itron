@@ -100,9 +100,6 @@ class WeatherClock:
         }
 
         if led_pin is not None:
-            # TODO: Remove this once the LED is working properly.
-            #self.led = Pin(led_pin, Pin.OUT)
-            #self.led.value(1)
             self.led = PWM(Pin(led_pin))
             self.led.freq(1000)
             self.led.duty_u16(self.led_brightness_levels[self.led_brightness])
@@ -147,8 +144,6 @@ class WeatherClock:
         # Matrix Rain animation shown at every full hour.
         self.matrix = MatrixRain(self.vfd, lines, cols)
         self.matrix_last_hour = None
-
-        # TODO: Isolate DHT22 physically from internal air.
 
     # .-----------------------------------------------------.
     # |                  GENERAL FUNCTIONS                  |

@@ -1,6 +1,9 @@
 class HiFiDisplayIcons:
 
     def iconsList(self):
+        """
+        Returns a dictionary mapping icon names to their size and bitmap data.
+        """
         return {
             'play_prev': self.playPrev(),
             'play_play': self.playPlay(),
@@ -15,6 +18,9 @@ class HiFiDisplayIcons:
         }
 
     def playPrev(self):
+        """
+        Returns the 13x16 previous-track icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x0D, 0x00, 0x10, 0x00,
@@ -25,6 +31,9 @@ class HiFiDisplayIcons:
         ]
 
     def playPlay(self):
+        """
+        Returns the 13x16 play icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x0D, 0x00, 0x10, 0x00,
@@ -35,6 +44,9 @@ class HiFiDisplayIcons:
         ]
 
     def playPause(self):
+        """
+        Returns the 13x16 pause icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x0D, 0x00, 0x10, 0x00,
@@ -45,6 +57,9 @@ class HiFiDisplayIcons:
         ]
 
     def playStop(self):
+        """
+        Returns the 13x16 stop icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x0D, 0x00, 0x10, 0x00,
@@ -55,6 +70,9 @@ class HiFiDisplayIcons:
         ]
 
     def playNext(self):
+        """
+        Returns the 13x16 next-track icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x0D, 0x00, 0x10, 0x00,
@@ -65,6 +83,9 @@ class HiFiDisplayIcons:
         ]
 
     def volumeDown(self):
+        """
+        Returns the 13x16 volume-down icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x0D, 0x00, 0x10, 0x00,
@@ -75,6 +96,9 @@ class HiFiDisplayIcons:
         ]
 
     def volumeUp(self):
+        """
+        Returns the 13x16 volume-up icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x0D, 0x00, 0x10, 0x00,
@@ -85,6 +109,9 @@ class HiFiDisplayIcons:
         ]
 
     def power(self):
+        """
+        Returns the 13x16 power icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x0D, 0x00, 0x10, 0x00,
@@ -95,6 +122,9 @@ class HiFiDisplayIcons:
         ]
 
     def shuffle(self):
+        """
+        Returns the 13x16 shuffle icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x0D, 0x00, 0x10, 0x00,
@@ -105,6 +135,9 @@ class HiFiDisplayIcons:
         ]
 
     def speaker(self):
+        """
+        Returns the 8x8 speaker icon as a list of size and bitmap bytes.
+        """
         return [
             # Image size.
             0x08, 0x00, 0x08, 0x00,

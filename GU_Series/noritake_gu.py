@@ -2019,7 +2019,9 @@ class NoritakeGu:
     # '-----------------------------------------------------'
 
     def acquireBus(self):
-        """Acquire the bus, allowing nested calls by its owning thread."""
+        """
+        Acquire the bus, allowing nested calls by its owning thread.
+        """
         owner = threading.get_ident() if threading_api == 'threading' else _thread.get_ident()
         if self.bus_lock_owner == owner:
             self.bus_lock_depth += 1
@@ -2029,7 +2031,9 @@ class NoritakeGu:
         self.bus_lock_depth = 1
 
     def releaseBus(self):
-        """Release the bus after the owning thread's outermost call."""
+        """
+        Release the bus after the owning thread's outermost call.
+        """
         owner = threading.get_ident() if threading_api == 'threading' else _thread.get_ident()
         if self.bus_lock_owner != owner:
             raise RuntimeError('Cannot release the display bus from another thread.')

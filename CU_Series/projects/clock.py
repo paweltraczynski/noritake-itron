@@ -1,3 +1,35 @@
+"""
+A Digital Clock project.
+
+Usage:
+
+from machine import Pin
+import time
+from noritake_cu_gpio import NoritakeCuGPIO
+from projects.clock import ClockTemp
+
+# Allow time for the display to become ready for receiving commands.
+time.sleep(1)
+
+# Define the number of lines and columns in the display:
+lines = 2
+cols = 16
+
+# Initialize Noritake VFD:
+vfd = NoritakeCuGPIO(
+    rs_pin = Pin(0),
+    enable_pin = Pin(1),
+    d4_pin = Pin(2),
+    d5_pin = Pin(3),
+    d6_pin = Pin(4),
+    d7_pin = Pin(5),
+    num_lines = lines,
+    num_columns = cols)
+
+clock = ClockTemp(vfd, lines, cols)
+clock.keepRunning()
+"""
+
 import time
 
 # Use relative imports for modules in the current package.

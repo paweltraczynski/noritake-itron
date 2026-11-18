@@ -29,7 +29,15 @@ from lib.machine_i2c_lcd import I2cLcd
 from noritake_cu_functions import NoritakeCuFunctions
 
 class NoritakeCuI2C(I2cLcd, NoritakeCuFunctions):
-    """Implements a Noritake Itron VFD connected via I2C."""
+    """
+    Implements a Noritake Itron VFD connected via I2C.
+
+    :param i2c: An initialized machine.I2C or machine.SoftI2C instance
+      connected to the PCF8574 display adapter.
+    :param i2c_addr: The adapter's 7-bit I2C address, for example, 0x27.
+    :param num_lines: The number of display lines. Default is 2.
+    :param num_columns: The number of display columns. Default is 16.
+    """
 
     def __init__(self, i2c, i2c_addr, num_lines = 2, num_columns = 16):
         super().__init__(i2c, i2c_addr, num_lines, num_columns)

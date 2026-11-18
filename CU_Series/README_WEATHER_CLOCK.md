@@ -76,9 +76,9 @@ When using this project, preserve file structures and directories.
 
 Copy the required files from the `CU_Series` directory to the board’s
 filesystem,
-preserving the `demo/` and `lib/` directories.
+preserving the `projects/` and `lib/` directories.
 
-Use `demo/config.py` as the source when copying to `demo/config_local.py`.
+Use `projects/config.py` as the source when copying to `projects/config_local.py`.
 Edit the copy exactly as explained in the [Digital Clock
 project](README.md#digital-clock-project).
 
@@ -143,7 +143,7 @@ brightness, LED brightness, and layout by editing the `settings.txt` file.
 
 Settings are stored in `settings.txt` in the board’s root directory, alongside
 `main.py`.
-Use the supplied settings by copying `demo/settings.txt` there.
+Use the supplied settings by copying `projects/settings.txt` there.
 
 The settings format is:
 ```

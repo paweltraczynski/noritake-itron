@@ -32,7 +32,30 @@ from lib.esp32_gpio_lcd import GpioLcd
 from noritake_cu_functions import NoritakeCuFunctions
 
 class NoritakeCuGPIO(GpioLcd, NoritakeCuFunctions):
-    """Implements a Noritake Itron VFD connected via GPIO pins."""
+    """
+    Implements a Noritake Itron VFD connected via GPIO pins.
+
+    Pin arguments must be machine.Pin objects, or None for unused pins.
+    For 4-bit mode, provide d4_pin through d7_pin and leave d0_pin through
+    d3_pin as None. For 8-bit mode, provide all eight data pins.
+
+    :param rs_pin: Register select pin (RS).
+    :param enable_pin: Enable pin (E).
+    :param d0_pin: Data pin D0; unused in 4-bit mode. Default is None.
+    :param d1_pin: Data pin D1; unused in 4-bit mode. Default is None.
+    :param d2_pin: Data pin D2; unused in 4-bit mode. Default is None.
+    :param d3_pin: Data pin D3; unused in 4-bit mode. Default is None.
+    :param d4_pin: Data pin D4; required in both 4-bit and 8-bit modes.
+    :param d5_pin: Data pin D5; required in both 4-bit and 8-bit modes.
+    :param d6_pin: Data pin D6; required in both 4-bit and 8-bit modes.
+    :param d7_pin: Data pin D7; required in both 4-bit and 8-bit modes.
+    :param rw_pin: Optional read/write pin, held low for write-only operation.
+      The default is None; connect the display's R/W line to ground if omitted.
+    :param backlight_pin: Optional backlight control pin supported by the base
+      LCD driver. Usually unused for a VFD. Default is None.
+    :param num_lines: The number of display lines. Default is 2.
+    :param num_columns: The number of display columns. Default is 16.
+    """
 
     def __init__(self, rs_pin, enable_pin, d0_pin=None, d1_pin=None,
              d2_pin=None, d3_pin=None, d4_pin=None, d5_pin=None,

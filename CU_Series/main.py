@@ -12,10 +12,10 @@ import time
 from noritake_cu_gpio import NoritakeCuGPIO
 # from noritake_cu_i2c import NoritakeCuI2C
 
-# Import Matrix Rain animation demo.
-from demo.matrix_rain import MatrixRain
-# Import digital clock demo.
-from demo.clock import ClockTemp
+# Import Matrix Rain animation project.
+from projects.matrix_rain import MatrixRain
+# Import Digital Clock project.
+from projects.clock import ClockTemp
 
 # Allow time for the display to become ready for receiving commands.
 time.sleep(1)

@@ -1,11 +1,15 @@
 class LargeDigits2Rows:
     """
-    A class containing big clock characters that occupy 2 rows:
-    - large digits (0-9)
-    - a large colon displayed between hours and minutes
-    - a large dash displayed when the time is not set
-    - a removal of a large digit or dash
-    - a removal of a colon.
+    A class containing big clock characters that occupy 2 rows.
+
+    Contains:
+    - Large digits (0-9)
+    - A large colon displayed between hours and minutes
+    - A large dash displayed when the time is not set
+    - A removal of a large digit or dash
+    - A removal of a colon.
+
+    :param disp: The display object used for printing large digits.
     """
     def __init__(self, disp):
         self.disp = disp

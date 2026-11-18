@@ -29,8 +29,6 @@ class HiFiDisplay:
 
     This class supports both MicroPython and CPython.
 
-    CircuitPython is not supported yet.
-
     :param no: An instance of the NoritakeGu() class.
     """
 

@@ -1,12 +1,12 @@
 """
-A demo for printing Matrix Rain animation on Noritake CU VFD's.
+A Matrix Rain animation project.
 
 Usage:
 
 from machine import Pin
 import time
 from noritake_cu_gpio import NoritakeCuGPIO
-from matrix_rain import MatrixRain
+from projects.matrix_rain import MatrixRain
 
 # Allow time for the display to become ready for receiving commands.
 time.sleep(1)
@@ -43,6 +43,10 @@ except ImportError:
 class MatrixRain:
     """
     Displays a Matrix Rain animation.
+
+    :param vfd: The Noritake CU class instance (GPIO or I2C).
+    :param lines: The number of lines on the display.
+    :param cols: The number of columns on the display.
     """
 
     def __init__(self, vfd, lines, cols):

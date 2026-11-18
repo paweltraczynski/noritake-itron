@@ -1,3 +1,49 @@
+"""
+A Weather Clock project.
+
+Usage:
+
+from machine import Pin
+import time
+from noritake_cu_gpio import NoritakeCuGPIO
+from projects.weather_clock import WeatherClock
+
+# Allow time for the display to become ready for receiving commands.
+time.sleep(1)
+
+# Set GPIO pin numbers for optional components; use None if not connected.
+# DHT22 sensor for indoor temperature and humidity.
+dht_pin = 10
+# Button for brightness, layout selection, and night wake (active low).
+button_pin = 12
+# LED with PWM brightness control.
+led_pin = 11
+
+# Define the number of lines and columns in the display:
+lines = 4
+cols = 20
+
+# Initialize Noritake VFD:
+vfd = NoritakeCuGPIO(
+    rs_pin = Pin(0),
+    enable_pin = Pin(1),
+    d4_pin = Pin(6),
+    d5_pin = Pin(7),
+    d6_pin = Pin(8),
+    d7_pin = Pin(9),
+    num_lines = lines,
+    num_columns = cols)
+
+weather_clock = WeatherClock(
+    vfd = vfd,
+    lines = lines,
+    cols = cols,
+    dht_pin = dht_pin,
+    button_pin = button_pin,
+    led_pin = led_pin)
+weather_clock.keepRunning()
+"""
+
 import time
 from machine import Pin, PWM
 import dht
@@ -828,6 +874,9 @@ class WeatherClock:
             self.fetchers.data_fetched = False
 
     def printWifiIcon(self):
+        """
+        Prints the Wi-Fi icon for the active layout.
+        """
         # Choose position for the active layout.
         if self.layout == 1:
             position = (0, 3)

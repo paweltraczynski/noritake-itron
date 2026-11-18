@@ -8,8 +8,8 @@ from machine import UART, Pin
 # Import Noritake Cu GPIO for interacting with Noritake VFD.
 from noritake_cu_gpio import NoritakeCuGPIO
 
-# Import weather clock.
-from demo.weather_clock import WeatherClock
+# Import Weather Clock project.
+from projects.weather_clock import WeatherClock
 
 # Allow time for the display to become ready for receiving commands.
 time.sleep(1)
